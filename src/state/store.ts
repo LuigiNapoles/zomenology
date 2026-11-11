@@ -14,6 +14,10 @@ export const ANIMATION_MS = 250;
 
 type Listener = () => void;
 
+/** Lo que muestra el panel: la ficha de un evento o la lista de una burbuja (índices de events.json). */
+export type Selection =
+  { kind: 'event'; index: number } | { kind: 'list'; members: number[] } | null;
+
 function easeOutCubic(k: number): number {
   return 1 - Math.pow(1 - k, 3);
 }
@@ -22,9 +26,10 @@ function prefersReducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-/** Estado único de la aplicación. De momento, solo la vista del eje y su ancho. */
+/** Estado único de la aplicación: vista del eje, ancho y selección. */
 export class Store {
   view: View;
+  selection: Selection = null;
   /** Ancho del eje en píxeles CSS. */
   width = 1;
   private listeners = new Set<Listener>();
@@ -94,6 +99,11 @@ export class Store {
     const target = panBy(this.view, dx, this.width);
     if (animate) this.animateTo(target);
     else this.setView(target);
+  }
+
+  select(selection: Selection): void {
+    this.selection = selection;
+    this.emit();
   }
 
   setMode(mode: ScaleMode): void {

@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DATE_TYPE_NAMES,
   formatCentury,
+  formatDuration,
   formatInstant,
   formatKa,
   formatMa,
   formatMonth,
   formatNumber,
+  formatOriginalDate,
   formatSpan,
   formatYear,
   toRoman,
@@ -88,5 +91,36 @@ describe('formatInstant y formatSpan', () => {
     expect(formatSpan(2.4)).toBe('2 años');
     expect(formatSpan(2 / 12)).toBe('2 meses');
     expect(formatSpan(1 / 12)).toBe('1 mes');
+  });
+});
+
+describe('ficha: fecha original y duración', () => {
+  it('añade la era solo si el texto no la dice', () => {
+    expect(formatOriginalDate('4569-4340', 'a.C.')).toBe('4569-4340 (a.C.)');
+    expect(formatOriginalDate('13.800 Ma', 'Ma')).toBe('13.800 Ma');
+    expect(formatOriginalDate('6 ka BP-', 'ka BP')).toBe('6 ka BP-');
+    expect(formatOriginalDate('-39 d.c', 'd.C.')).toBe('-39 d.c');
+    expect(formatOriginalDate('1000 a.d-', 'd.C.')).toBe('1000 a.d-');
+    expect(formatOriginalDate('175-235', 'd.C.')).toBe('175-235 (d.C.)');
+    expect(formatOriginalDate('07|1851', undefined)).toBe('07|1851');
+  });
+
+  it('calcula la duración', () => {
+    expect(formatDuration(1880, 1890, 1880, 1891, false)).toBe('10 años');
+    expect(formatDuration(-25, 14, -25, 15, false)).toBe('38 años');
+    expect(formatDuration(1, 2, 1, 3, false)).toBe('1 año');
+    expect(formatDuration(-13_800_000_000, -13_700_000_000, 0, 0, false)).toBe(
+      '100 millones de años',
+    );
+    // Vísperas sicilianas: 30 de marzo – 22 de mayo de 1282.
+    const start = 1282 + 2 / 12 + 29 / (12 * 31);
+    const end = 1282 + 4 / 12 + 22 / (12 * 31);
+    expect(formatDuration(1282, 1282, start, end, true)).toBe('54 días');
+    expect(formatDuration(1851, 1851, 1851.5, 1851 + 10 / 12, true)).toBe('4 meses');
+  });
+
+  it('nombres de tipo de fecha', () => {
+    expect(DATE_TYPE_NAMES.v).toBe('Vida');
+    expect(DATE_TYPE_NAMES.n).toBe('Nacimiento');
   });
 });

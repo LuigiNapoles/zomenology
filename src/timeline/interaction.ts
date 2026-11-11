@@ -16,13 +16,30 @@ function wheelPixels(e: WheelEvent, delta: number): number {
   return delta;
 }
 
-/** Rueda, arrastre y pellizco sobre el elemento del eje. Devuelve la función para soltarlos. */
-export function attachPointerInteraction(el: HTMLElement, store: Store): () => void {
+/** Movimiento máximo (px) para que pulsar y soltar cuente como toque y no como arrastre. */
+const TAP_SLOP = 6;
+
+export interface PointerCallbacks {
+  /** Toque o clic sin arrastrar, en coordenadas del elemento. */
+  onTap?: (x: number, y: number) => void;
+  /** Puntero encima sin pulsar (para el cursor). */
+  onHover?: (x: number, y: number) => void;
+}
+
+/** Rueda, arrastre, pellizco y toque sobre el elemento del eje. Devuelve la función para soltarlos. */
+export function attachPointerInteraction(
+  el: HTMLElement,
+  store: Store,
+  callbacks: PointerCallbacks = {},
+): () => void {
   const pointers = new Map<number, PointerPos>();
   let pinchDistance = 0;
   let pinchMidX = 0;
+  // Toque en curso: posición inicial y si ya se ha movido demasiado o ha habido pellizco.
+  let tap: { x: number; y: number; cancelled: boolean } | null = null;
 
   const localX = (clientX: number) => clientX - el.getBoundingClientRect().left;
+  const localY = (clientY: number) => clientY - el.getBoundingClientRect().top;
 
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
@@ -48,6 +65,7 @@ export function attachPointerInteraction(el: HTMLElement, store: Store): () => v
     el.setPointerCapture(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     store.cancelAnimation();
+    tap = pointers.size === 1 ? { x: e.clientX, y: e.clientY, cancelled: false } : null;
     const pinch = pinchState();
     if (pinch) {
       pinchDistance = pinch.distance;
@@ -57,7 +75,11 @@ export function attachPointerInteraction(el: HTMLElement, store: Store): () => v
 
   const onPointerMove = (e: PointerEvent) => {
     const prev = pointers.get(e.pointerId);
-    if (!prev) return;
+    if (!prev) {
+      if (pointers.size === 0) callbacks.onHover?.(localX(e.clientX), localY(e.clientY));
+      return;
+    }
+    if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > TAP_SLOP) tap.cancelled = true;
     const dx = e.clientX - prev.x;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) {
@@ -74,7 +96,12 @@ export function attachPointerInteraction(el: HTMLElement, store: Store): () => v
   };
 
   const onPointerUp = (e: PointerEvent) => {
+    const wasSingle = pointers.size === 1 && pointers.has(e.pointerId);
     pointers.delete(e.pointerId);
+    if (e.type === 'pointerup' && wasSingle && tap && !tap.cancelled) {
+      callbacks.onTap?.(localX(e.clientX), localY(e.clientY));
+    }
+    if (pointers.size === 0) tap = null;
     const pinch = pinchState();
     if (pinch) {
       pinchDistance = pinch.distance;
@@ -101,7 +128,7 @@ function isTyping(target: EventTarget | null): boolean {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }
 
-/** Flechas desplazan; + y − hacen zoom. Ignora las teclas mientras se escribe. */
+/** Flechas desplazan; + y − hacen zoom; Esc cierra la ficha. Ignora las teclas mientras se escribe. */
 export function attachKeyboard(target: Window, store: Store): () => void {
   const onKey = (e: KeyboardEvent) => {
     if (e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target)) return;
@@ -120,6 +147,10 @@ export function attachKeyboard(target: Window, store: Store): () => void {
       case '-':
       case '_':
         store.zoom(1 / ZOOM_STEP, width / 2, true);
+        break;
+      case 'Escape':
+        if (!store.selection) return;
+        store.select(null);
         break;
       default:
         return;

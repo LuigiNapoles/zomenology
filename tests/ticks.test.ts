@@ -60,6 +60,12 @@ describe('los 7 niveles de escala (lineal)', () => {
     }
   });
 
+  it('antes del 1000 a.C. los siglos se escriben como años', () => {
+    const labels = computeTicks(viewAround(-6000, 3000, 'linear'), W).map((k) => k.label);
+    expect(labels.some((l) => l.startsWith('s. '))).toBe(false);
+    expect(labels).toContain('6000 a.C.');
+  });
+
   it('nunca pone una marca en el año 0', () => {
     for (const years of [3, 30, 300, 3000]) {
       const ticks = computeTicks(viewAround(0, years, 'linear'), W);

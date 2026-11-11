@@ -111,3 +111,56 @@ export function formatSpan(years: number): string {
   const months = Math.max(1, Math.round(years * 12));
   return months === 1 ? '1 mes' : `${months} meses`;
 }
+
+/** Nombre del tipo de fecha para la ficha. */
+export const DATE_TYPE_NAMES: Record<string, string> = {
+  e: 'Evento',
+  v: 'Vida',
+  m: 'Muerte',
+  f: 'Floruit (época de actividad)',
+  n: 'Nacimiento',
+};
+
+/** ¿El texto de la fecha ya indica su era? */
+function mentionsEra(text: string, era: string): boolean {
+  const t = text.toLowerCase();
+  switch (era) {
+    case 'Ma':
+      return /\bma\b/.test(t);
+    case 'ka BP':
+      return /\bka\b/.test(t);
+    case 'a.C.':
+      return /a\.?\s?c/.test(t);
+    case 'd.C.':
+      return /d\.?\s?c|a\.?\s?d/.test(t);
+    default:
+      return t.includes(era.toLowerCase());
+  }
+}
+
+/** Fecha tal como aparece en el PDF, con la era entre paréntesis si el texto no la dice. */
+export function formatOriginalDate(text: string | undefined, era: string | undefined): string {
+  const base = text ?? '';
+  if (!era || mentionsEra(base, era)) return base;
+  return base ? `${base} (${era})` : era;
+}
+
+/** Duración en años (sin año 0) o en meses y días si hay fechas precisas. */
+export function formatDuration(
+  a: number,
+  b: number,
+  start: number,
+  end: number,
+  precise: boolean,
+): string {
+  if (precise && end - start < 3) {
+    const days = Math.round((end - start) * 365.25);
+    if (end - start < 2 / 12) return days === 1 ? '1 día' : `${days} días`;
+    const months = Math.round((end - start) * 12);
+    return months === 1 ? '1 mes' : `${months} meses`;
+  }
+  const years = b - a - (a < 0 && b > 0 ? 1 : 0);
+  if (years >= 1e6) return `${formatNumber(years / 1e6, 2)} millones de años`;
+  if (years === 1) return '1 año';
+  return `${formatNumber(years, 0)} años`;
+}

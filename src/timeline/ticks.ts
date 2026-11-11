@@ -116,7 +116,8 @@ export function ticksForStep(def: StepDef, t0: number, t1: number): { t: number;
     // El año 0 no existe: la marca del 0 se pone en el año 1.
     const t = value === 0 ? 1 : value;
     if (t > t1) continue;
-    const label = level === 'century' ? formatCentury(value) : formatYear(t);
+    // Siglos en romanos solo desde el 1000 a.C.; antes, «8000 a.C.» se lee mejor que «s. LXXX a.C.».
+    const label = level === 'century' && value >= -1000 ? formatCentury(value) : formatYear(t);
     out.push({ t, label });
   }
   return out;
