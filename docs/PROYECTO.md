@@ -460,6 +460,8 @@ Los 10 temas, transiciones, texturas, tipografías y selector de estilo.
 
 La web se publica gratis en GitHub Pages y se actualiza sola con cada `git push`; el resultado es un enlace del tipo `https://<usuario>.github.io/cronologia/`.
 
+> **Publicada (11/11/2026):** repositorio `LuigiNapoles/zomenology` (renombrado desde `cronologia` al llamarse el proyecto Zomenology). Web completa en https://luiginapoles.github.io/zomenology/ y versión sencilla en https://luiginapoles.github.io/zomenology/sencilla/. Los commits usan la dirección privada de GitHub como autor.
+
 **Pasos**
 
 1. Crear el repositorio `cronologia` en GitHub.

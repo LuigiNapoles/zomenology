@@ -36,9 +36,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - name: Versión completa (/cronologia/)
+      - name: Versión completa (/zomenology/)
         run: npm run build
-      - name: Versión sencilla (/cronologia/sencilla/)
+      - name: Versión sencilla (/zomenology/sencilla/)
         run: npm run build:sencilla && cp -r dist-sencilla dist/sencilla
 
       - uses: actions/configure-pages@v5
