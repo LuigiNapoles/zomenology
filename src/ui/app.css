@@ -47,7 +47,7 @@ input[type='text'] {
 
 .app {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: 280px minmax(0, 1fr);
   height: 100%;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
     env(safe-area-inset-left);
@@ -74,13 +74,42 @@ input[type='text'] {
   min-height: 44px;
 }
 
+.brand {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.logo {
+  flex: 0 0 auto;
+  border-radius: 8px;
+}
+
+.brand-text {
+  min-width: 0;
+}
+
 .title {
   margin: 0;
   overflow: hidden;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.01em;
+  line-height: 1.15;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.subtitle {
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 14px;
   line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* Más específico que .icon-button y .nav-item, que se definen después. */
@@ -186,7 +215,11 @@ input[type='text'] {
     flex-direction: column;
   }
 
-  .sidebar-collapsed .title,
+  .sidebar-collapsed .brand {
+    flex: 0 0 auto;
+  }
+
+  .sidebar-collapsed .brand-text,
   .sidebar-collapsed .nav-label {
     position: absolute;
     width: 1px;
@@ -1166,6 +1199,13 @@ input[type='text'] {
   display: none;
 }
 
+/* Con ratón, el botón de plegar puede ser más estrecho y dejar sitio al subtítulo. */
+@media (pointer: fine) {
+  .sidebar .sidebar-toggle {
+    min-width: 36px;
+  }
+}
+
 /* Objetivos táctiles de 44 px en pantallas táctiles. */
 @media (pointer: coarse) {
   .jumps button,
@@ -1212,7 +1252,12 @@ input[type='text'] {
   }
 
   .title {
-    font-size: 17px;
+    font-size: 18px;
+  }
+
+  .logo {
+    width: 32px;
+    height: 32px;
   }
 
   .sidebar-menu {

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Store } from '../state/store';
 import { THEMES, type ThemeMode } from '../themes/theme';
 import { IconMenu, IconMoon, IconSearch, IconSidebar, IconSun } from './icons';
+import { Logo } from './Logo';
 
 interface Props {
   store: Store;
@@ -69,16 +70,6 @@ export function Sidebar({ store, search, actions }: Props) {
       <div class="sidebar-top">
         <button
           type="button"
-          class="icon-button sidebar-toggle"
-          aria-label={collapsed ? 'Desplegar la barra lateral' : 'Plegar la barra lateral'}
-          aria-expanded={!collapsed}
-          title={collapsed ? 'Desplegar la barra lateral' : 'Plegar la barra lateral'}
-          onClick={() => store.setSidebarCollapsed(!collapsed)}
-        >
-          <IconSidebar />
-        </button>
-        <button
-          type="button"
           class="icon-button menu-toggle"
           aria-label="Menú"
           aria-expanded={menuOpen}
@@ -87,7 +78,23 @@ export function Sidebar({ store, search, actions }: Props) {
         >
           <IconMenu />
         </button>
-        <h1 class="title">Cronología interactiva</h1>
+        <div class="brand">
+          <Logo />
+          <div class="brand-text">
+            <h1 class="title">Zomenology</h1>
+            <p class="subtitle">la cronología interactiva</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="icon-button sidebar-toggle"
+          aria-label={collapsed ? 'Desplegar la barra lateral' : 'Plegar la barra lateral'}
+          aria-expanded={!collapsed}
+          title={collapsed ? 'Desplegar la barra lateral' : 'Plegar la barra lateral'}
+          onClick={() => store.setSidebarCollapsed(!collapsed)}
+        >
+          <IconSidebar />
+        </button>
       </div>
 
       <div class="sidebar-search">{search}</div>

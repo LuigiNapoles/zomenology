@@ -1,5 +1,7 @@
 # Cronología Interactiva — Documento de proyecto
 
+> **Nombre (11/11/2026):** el proyecto se llama **Zomenology**, con el subtítulo «la cronología interactiva». Logo: una «Z» crema sobre terracota cuya diagonal es una línea del tiempo (también es el favicon).
+
 Nov 11, 2026 · @Luigi
 
 ## Resumen y objetivos
