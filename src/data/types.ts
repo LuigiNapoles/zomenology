@@ -30,6 +30,8 @@ export interface TimelineEvent {
   p: number;
   /** 1 = rango abierto (sin final); 2 = solo se conoce el final (sin comienzo). */
   x?: 1 | 2;
+  /** Artículo de la Wikipedia en español (con «#sección» si la hay), solo en los más importantes. */
+  w?: string;
 }
 
 export interface DataFile {

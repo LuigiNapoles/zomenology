@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="8" fill="#B05730"/>
-  <path d="M9.5 9.5h13L9.5 22.5h13" fill="none" stroke="#FAF9F5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="16" cy="16" r="3.2" fill="#B05730" stroke="#FAF9F5" stroke-width="2"/>
+  <!-- «Z» estilizada: horizontales finas, diagonal gruesa y dos remates, en terracota. -->
+  <path fill="#B05730" d="M5.5 4.5h21v2.6L11.6 24.9h15v2.6h-21v-2.6L20.4 7.1H5.5z"/>
+  <path fill="#B05730" d="M5.5 4.5h2.3v5.6H5.5zM24.3 21.9h2.3v5.6h-2.3z"/>
 </svg>

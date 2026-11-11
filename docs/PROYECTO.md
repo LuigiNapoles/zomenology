@@ -180,6 +180,8 @@ La v1 incluye 14 funcionalidades en cuatro bloques; las marcadas como (v2) queda
 
 **F7. Ficha del evento**
 
+> **Cambio del 11/11/2026:** la ficha ya no muestra la página del PDF (sigue en los datos); «Copiar enlace» es un icono de portapapeles junto a «Cerrar» (cambia a ✓ al copiar); y los eventos más importantes llevan un enlace «Wikipedia» al artículo de la Wikipedia en español (campo `w`, ver scripts/fetch_wikipedia.py y data/wikipedia.csv).
+
 - Al pinchar o pulsar Intro sobre un evento: panel lateral en escritorio y hoja inferior en móvil.
 - Contenido: descripción completa, fecha original (`fecha_texto`), duración calculada si es periodo, tipo de fecha, aviso de fecha aproximada, otras fechas, sección y página del PDF.
 - Acciones: copiar enlace al evento, «¿Qué pasaba a la vez?» (F11), centrar en el eje, cerrar.
@@ -228,6 +230,8 @@ La v1 incluye 14 funcionalidades en cuatro bloques; las marcadas como (v2) queda
 - Solo usa eventos con fecha exacta, sin «aproximada».
 
 **F14. Escala humana**
+
+> **Retirada el 11/11/2026** a petición del usuario.
 
 - En la ficha, una línea comparativa: «Si toda la historia del universo cupiera en un año, esto ocurrió el 31 de diciembre a las 23:59:58».
 - Para eventos históricos, la comparación cambia a «hace X generaciones» (25 años por generación).

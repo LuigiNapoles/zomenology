@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Store } from '../state/store';
 import { THEMES, type ThemeMode } from '../themes/theme';
 import { IconMenu, IconMoon, IconSearch, IconSidebar, IconSun } from './icons';
-import { Logo } from './Logo';
 
 interface Props {
   store: Store;
@@ -79,7 +78,6 @@ export function Sidebar({ store, search, actions }: Props) {
           <IconMenu />
         </button>
         <div class="brand">
-          <Logo />
           <div class="brand-text">
             <h1 class="title">Zomenology</h1>
             <p class="subtitle">la cronología interactiva</p>

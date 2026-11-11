@@ -93,3 +93,24 @@ export const IconPlus = (p: Props) => (
     <path d="M10 5v10M5 10h10" />
   </Svg>
 );
+
+export const IconClipboard = (p: Props) => (
+  <Svg {...p}>
+    <rect x="5" y="4" width="10" height="13" rx="2" />
+    <path d="M8 4V3.5A1.5 1.5 0 0 1 9.5 2h1A1.5 1.5 0 0 1 12 3.5V4" />
+    <path d="M8 9h4M8 12h4" />
+  </Svg>
+);
+
+export const IconCheck = (p: Props) => (
+  <Svg {...p}>
+    <path d="m4.5 10.5 3.5 3.5 7.5-8" />
+  </Svg>
+);
+
+export const IconExternal = (p: Props) => (
+  <Svg {...p}>
+    <path d="M11 4h5v5M16 4l-7 7" />
+    <path d="M14 11.5V15a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 4 15V7.5A1.5 1.5 0 0 1 5.5 6H9" />
+  </Svg>
+);

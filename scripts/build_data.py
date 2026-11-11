@@ -19,6 +19,8 @@ ROOT = Path(__file__).resolve().parent.parent
 CSV_PATH = ROOT / "data" / "cronologia.csv"
 OUT_DIR = ROOT / "public" / "data"
 REPORT_PATH = ROOT / "data" / "build_report.md"
+# Enlaces a Wikipedia elegidos (ver scripts/fetch_wikipedia.py): id, articulo, seccion_articulo.
+WIKI_PATH = ROOT / "data" / "wikipedia.csv"
 
 PRESENT_REF = 2027  # «ya» = 2027 − inicio
 
@@ -225,6 +227,7 @@ def build() -> None:
     undated.sort(key=lambda e: e["id"])  # type: ignore[index]
 
     validate(events, undated, sections)
+    wiki = add_wikipedia(events, undated)
 
     generated = date.today().isoformat()
     header = {"version": 1, "generated": generated, "macros": MACROS, "sections": sections}
@@ -240,9 +243,25 @@ def build() -> None:
 
     total = len(events) + len(undated) + sum(excluded.values())
     print(f"Leídas {rows_read} · eje {len(events)} · sin fecha {len(undated)} · "
-          f"excluidas {sum(excluded.values())} · cuadra: {'sí' if total == rows_read else 'NO'}")
+          f"excluidas {sum(excluded.values())} · con Wikipedia {wiki} · "
+          f"cuadra: {'sí' if total == rows_read else 'NO'}")
     if total != rows_read:
         raise BuildError("El recuento no cuadra")
+
+
+def add_wikipedia(events: list[dict[str, object]], undated: list[dict[str, object]]) -> int:
+    """Añade el campo «w» (artículo de Wikipedia, con «#sección» si la hay) a los elegidos."""
+    if not WIKI_PATH.exists():
+        return 0
+    table = pd.read_csv(WIKI_PATH, encoding="utf-8", dtype=str, keep_default_na=False)
+    by_id = {e["id"]: e for e in events + undated}
+    for row in table.itertuples():
+        ev = by_id.get(int(row.id))
+        if ev is None:
+            raise BuildError(f"wikipedia.csv: no existe el id {row.id}")
+        fragment = getattr(row, "seccion_articulo", "")
+        ev["w"] = row.articulo + (f"#{fragment}" if fragment else "")
+    return len(table)
 
 
 def _add_common(ev: dict[str, object], row: object, approx: bool) -> None:

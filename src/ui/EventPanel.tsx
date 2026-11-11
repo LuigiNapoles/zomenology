@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { DataFile, TimelineEvent } from '../data/types';
 import { DATE_TYPE_NAMES, formatDuration, formatOriginalDate } from '../format/dates';
 import { LEARN } from '../features/flags';
-import { humanScaleText } from '../features/humanScale';
 import { compileFilter } from '../state/filters';
 import { eventHash } from '../state/persist';
 import type { Store } from '../state/store';
@@ -11,6 +10,8 @@ import { viewForEvent } from '../timeline/focus';
 import type { PreparedEvents } from '../timeline/prepare';
 import { Contemporaries } from './Contemporaries';
 import { trapTab } from './focus';
+import { wikipediaUrl } from '../data/wikipedia';
+import { IconCheck, IconClipboard, IconExternal } from './icons';
 
 interface Props {
   store: Store;
@@ -28,9 +29,9 @@ function useStoreState(store: Store) {
   return state;
 }
 
-/** Enlace directo al evento: …/#e42. */
+/** Enlace directo al evento: …/#e42 (sin otros parámetros que traiga la dirección). */
 export function eventLink(id: number): string {
-  return `${location.origin}${location.pathname}${location.search}${eventHash(id)}`;
+  return `${location.origin}${location.pathname}${eventHash(id)}`;
 }
 
 function durationText(e: TimelineEvent, data: PreparedEvents, index: number): string | null {
@@ -208,6 +209,8 @@ export function EventPanel({ store, file, undated, data }: Props) {
     try {
       await navigator.clipboard.writeText(eventLink(e.id));
       setCopied(true);
+      // El ✓ vuelve a ser el portapapeles a los 2 s.
+      window.setTimeout(() => setCopied(false), 2000);
     } catch {
       window.prompt('Copia el enlace:', eventLink(e.id));
     }
@@ -240,9 +243,21 @@ export function EventPanel({ store, file, undated, data }: Props) {
           </>
         )}
         <span class="panel-spacer" />
+        <button
+          type="button"
+          class={copied ? 'icon-button copied' : 'icon-button'}
+          aria-label={copied ? 'Enlace copiado' : 'Copiar el enlace a este evento'}
+          title={copied ? 'Enlace copiado' : 'Copiar el enlace a este evento'}
+          onClick={() => void copy()}
+        >
+          {copied ? <IconCheck /> : <IconClipboard />}
+        </button>
         <button type="button" class="icon-button" aria-label="Cerrar" onClick={close}>
           ×
         </button>
+        <span class="sr-only" aria-live="polite">
+          {copied ? 'Enlace copiado' : ''}
+        </span>
       </div>
 
       <p class="panel-kicker">
@@ -283,21 +298,16 @@ export function EventPanel({ store, file, undated, data }: Props) {
         )}
         <dt>Sección</dt>
         <dd>{section?.label}</dd>
-        <dt>Página del PDF</dt>
-        <dd>{e.p}</dd>
       </dl>
 
-      {LEARN && isDated && e.a !== undefined && (
-        <p class="human-scale">
-          <span class="human-scale-label">Escala humana</span>
-          {humanScaleText(e.a, data.start[index] as number, data.point[index] === 1)}
-        </p>
-      )}
-
       <div class="panel-actions">
-        <button type="button" onClick={() => void copy()}>
-          {copied ? 'Enlace copiado' : 'Copiar enlace'}
-        </button>
+        {e.w && (
+          <a class="wiki-link" href={wikipediaUrl(e.w)} target="_blank" rel="noopener noreferrer">
+            Wikipedia
+            <IconExternal size={16} />
+            <span class="sr-only"> (se abre en otra pestaña)</span>
+          </a>
+        )}
         {isDated && (
           <>
             <button type="button" onClick={() => focusEvent(store, data, index)}>

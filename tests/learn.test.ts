@@ -9,14 +9,6 @@ import {
   pointMargin,
 } from '../src/features/contemporaries';
 import {
-  PRESENT,
-  cosmicTime,
-  formatCosmicTime,
-  generationsText,
-  humanScaleText,
-  yearsAgo,
-} from '../src/features/humanScale';
-import {
   ORDER_SIZE,
   ROUND_SIZE,
   EMPTY_SCORE,
@@ -34,8 +26,7 @@ import {
 import { randomEvent, shuffle } from '../src/features/random';
 import { compileFilter, DEFAULT_FILTERS } from '../src/state/filters';
 import { prepareEvents } from '../src/timeline/prepare';
-import { T_MIN, travelView, type View } from '../src/timeline/scale';
-import { startOf } from '../src/timeline/time';
+import { T_MAX_LOG, travelView, type View } from '../src/timeline/scale';
 
 /** Generador pseudoaleatorio con semilla (mulberry32), para tests repetibles. */
 function seeded(seed: number): () => number {
@@ -96,7 +87,7 @@ describe('¿Qué pasaba a la vez? (F11)', () => {
   });
 
   it('antes de −10.000 la ventana es ±10 % de la antigüedad', () => {
-    expect(pointMargin(-1_000_000)).toBeCloseTo((PRESENT + 1_000_000) * 0.1, 6);
+    expect(pointMargin(-1_000_000)).toBeCloseTo((T_MAX_LOG + 1_000_000) * 0.1, 6);
     expect(pointMargin(-9000)).toBe(10);
   });
 
@@ -269,38 +260,5 @@ describe('Quiz (F13)', () => {
     expect(loadBest(storage)).toEqual({ order: 6, century: 9 });
     memory.set('cronologia:quiz:v1', '{"order": "x", "century": 99');
     expect(loadBest(storage)).toEqual({ order: 0, century: 0 });
-  });
-});
-
-describe('Escala humana (F14)', () => {
-  it('calendario cósmico: el Big Bang el 1 de enero y hoy el 31 de diciembre', () => {
-    expect(formatCosmicTime(cosmicTime(T_MIN))).toBe('1 de enero a las 00:00:00');
-    expect(formatCosmicTime(cosmicTime(PRESENT))).toBe('31 de diciembre a las 23:59:59');
-    // La Tierra se forma a principios de septiembre.
-    expect(cosmicTime(-4_540_000_000).month).toBe(8);
-    // Hace unos 700 años: dos segundos antes de medianoche, como en el ejemplo del documento.
-    expect(formatCosmicTime(cosmicTime(1300))).toBe('31 de diciembre a las 23:59:58');
-  });
-
-  it('generaciones de 25 años, sin año 0', () => {
-    expect(yearsAgo(1)).toBe(PRESENT - 1);
-    expect(yearsAgo(-1)).toBe(PRESENT);
-    expect(generationsText(1251, true)).toBe(
-      'Ocurrió hace unas 31 generaciones (775 años, a 25 años por generación).',
-    );
-    expect(generationsText(2005, false)).toBe(
-      'Empezó hace una generación (21 años, a 25 años por generación).',
-    );
-    expect(generationsText(2020, true)).toBe('Ocurrió hace menos de una generación.');
-  });
-
-  it('antes del 3300 a.C. usa el calendario cósmico; después, generaciones', () => {
-    expect(humanScaleText(-5000, startOf(-5000), true)).toMatch(
-      /^Si toda la historia del universo cupiera en un año, esto ocurrió el 31 de diciembre a las 23:59:4\d\.$/,
-    );
-    expect(humanScaleText(-3300, startOf(-3300), true)).toMatch(/generaciones/);
-    expect(humanScaleText(-2_500_000, startOf(-2_500_000), false)).toMatch(
-      /esto empezó el 31 de diciembre/,
-    );
   });
 });
