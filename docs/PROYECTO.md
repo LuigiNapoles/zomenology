@@ -234,7 +234,18 @@ La v1 incluye 14 funcionalidades en cuatro bloques; las marcadas como (v2) queda
 
 ## Diseño visual por periodos
 
-La web cambia de piel según la fecha que hay en el centro de la pantalla: 10 estilos, del cosmos estrellado al museo moderno. La estructura, los controles y el texto de lectura no cambian, para que el cambio sea ambiental y no estorbe.
+La web cambia de piel según la fecha que hay en el centro de la pantalla: 10 estilos, del cosmos estrellado al museo moderno.
+
+> **Decisión del 11/11/2026 (sustituye a la tabla «Los 10 estilos»):** para que la página no parpadee tanto, los estilos se reducen a 4 grandes eras, cada una con la paleta, tipografía, textura y adornos de uno de los estilos originales:
+>
+> | Era | Rango | Estilo que usa |
+> | --- | --- | --- |
+> | Prehistoria | Big Bang → −3300 | Paleolítico |
+> | Antigüedad | −3300 → 476 | Antigüedad |
+> | Edad Media y Moderna | 476 → 1789 | Edad Media (con capitular) |
+> | Edad Contemporánea | 1789 → hoy | Siglos XX–XXI |
+>
+> Se mantienen el selector (por periodo, neutro claro y oscuro) y la transición de 600 ms. La rosa de los vientos del minimapa desaparece con el estilo Edad Moderna. Además: línea punteada en el centro del eje con la fecha que marca. La estructura, los controles y el texto de lectura no cambian, para que el cambio sea ambiental y no estorbe.
 
 **Reglas comunes**
 
@@ -414,7 +425,7 @@ Escala lineal y logarítmica, marcas del eje, zoom y desplazamiento, puntos y ba
 Los 10 temas, transiciones, texturas, tipografías y selector de estilo.
 
 - [ ] Cada periodo se activa al cruzar su límite, con transición de 600 ms
-- [ ] Contraste AA comprobado con una herramienta automática en los 10 temas
+- [ ] Contraste AA comprobado con una herramienta automática en los 10 temas (4 eras tras la decisión del 11/11/2026)
 - [ ] Los estilos neutro claro y oscuro funcionan
 
 ### Fase 6 — Aprender jugando

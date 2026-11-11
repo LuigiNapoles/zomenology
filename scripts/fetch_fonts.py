@@ -22,16 +22,10 @@ UA = (
 # Familia → parámetro de pesos para la API css2 de Google Fonts.
 FAMILIES = {
     "Source Sans 3": "wght@400..700",
-    "Space Grotesk": "wght@500..700",
-    "Fraunces": "wght@500..700",
     "Caveat Brush": "",
-    "Josefin Slab": "wght@500..700",
     "Marcellus": "",
-    "Cinzel": "wght@500..700",
     "Cormorant Garamond": "wght@500..700",
     "UnifrakturCook": "wght@700",
-    "IM Fell English": "",
-    "Playfair Display": "wght@500..700",
     "Archivo": "wght@500..700",
 }
 

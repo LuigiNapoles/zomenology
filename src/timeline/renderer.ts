@@ -5,7 +5,8 @@ import { loadTexture } from '../themes/textures';
 import { bubbleLabel, bubbleWidth } from './cluster';
 import { INSIDE_PAD, LABEL_GAP, LANE_PADDING, ROW_HEIGHT, type PlacedItem } from './layout';
 import type { PreparedEvents } from './prepare';
-import type { ScaleMode, View } from './scale';
+import { formatInstant } from '../format/dates';
+import { centerTime, visibleYears, type ScaleMode, type View } from './scale';
 import { computeTicks, type Tick } from './ticks';
 import {
   BAR_HEIGHT,
@@ -209,21 +210,12 @@ export class TimelineRenderer {
       .catch(() => undefined);
   }
 
-  /** Textura del estilo; en Cosmos, con un paralaje suave al desplazar. */
-  private drawTexture(
-    id: ThemeId | null,
-    alpha: number,
-    w: number,
-    h: number,
-    left: number,
-    k: number,
-  ): void {
+  /** Textura de fondo del estilo. */
+  private drawTexture(id: ThemeId | null, alpha: number, w: number, h: number): void {
     if (!id || alpha <= 0) return;
     const pattern = this.patterns.get(id);
     if (!pattern) return;
     const { ctx } = this;
-    const parallax = id === 'cosmos' && !prefersReducedMotion() ? -((left * k * 0.04) % 512) : 0;
-    pattern.setTransform(new DOMMatrix().translateSelf(parallax, 0));
     ctx.globalAlpha = alpha;
     ctx.fillStyle = pattern;
     ctx.fillRect(0, 0, w, h);
@@ -235,7 +227,7 @@ export class TimelineRenderer {
     const { ctx } = this;
     const theme = this.theme as CanvasTheme;
     switch (this.themeId) {
-      case 'paleo': {
+      case 'prehistory': {
         // Trazo de carbón irregular.
         ctx.strokeStyle = theme.ink;
         ctx.globalAlpha = 0.55;
@@ -250,13 +242,7 @@ export class TimelineRenderer {
         ctx.globalAlpha = 1;
         return;
       }
-      case 'c19':
-        // Filetes dobles de periódico.
-        ctx.fillStyle = theme.ink;
-        ctx.fillRect(0, y - 3, w, 1);
-        ctx.fillRect(0, y - 1, w, 1);
-        return;
-      case 'ancient':
+      case 'antiquity':
       case 'medieval':
         ctx.fillStyle = theme.ornament;
         ctx.fillRect(0, y - 1, w, 1);
@@ -378,8 +364,8 @@ export class TimelineRenderer {
     const k = w / view.span;
     ctx.fillStyle = theme.bg;
     ctx.fillRect(0, 0, w, h);
-    this.drawTexture(this.previousThemeId, 1 - fade, w, laneBottom, left, k);
-    this.drawTexture(this.themeId, fade, w, laneBottom, left, k);
+    this.drawTexture(this.previousThemeId, 1 - fade, w, laneBottom);
+    this.drawTexture(this.themeId, fade, w, laneBottom);
 
     let m = this.mark('clear', t0);
     const layout = this.ensureLayout(view, w, laneBottom);
@@ -418,7 +404,7 @@ export class TimelineRenderer {
     ctx.restore();
     m = this.mark('events', m);
 
-    this.drawAxis(ticks, w, laneBottom);
+    this.drawCenter(view, ticks, w, laneBottom);
     this.mark('axis', m);
     // Mientras dura el cambio de estilo, se sigue pintando cada fotograma.
     if (fade < 1) this.requestDraw();
@@ -426,7 +412,45 @@ export class TimelineRenderer {
     this.onDraw?.(this.lastDrawMs);
   }
 
-  private drawAxis(ticks: Tick[], w: number, laneBottom: number): void {
+  /**
+   * Línea punteada en el centro con la fecha que marca, en una etiqueta sobre el eje
+   * (no tapa eventos; las marcas del eje que quedarían debajo no se escriben).
+   */
+  private drawCenter(view: View, ticks: Tick[], w: number, laneBottom: number): void {
+    const { ctx } = this;
+    const theme = this.theme as CanvasTheme;
+    const x = Math.round(w / 2) + 0.5;
+    ctx.save();
+    ctx.strokeStyle = theme.ink;
+    ctx.globalAlpha = 0.7;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, laneBottom);
+    ctx.stroke();
+    ctx.restore();
+
+    const label = formatInstant(centerTime(view), visibleYears(view));
+    ctx.font = BOLD_FONT;
+    const width = ctx.measureText(label).width + 16;
+    this.drawAxis(ticks, w, laneBottom, [x - width / 2 - 6, x + width / 2 + 6]);
+    const top = laneBottom + 5;
+    ctx.font = BOLD_FONT;
+    const pill = new Path2D();
+    pill.roundRect(x - width / 2, top, width, 22, 11);
+    ctx.fillStyle = theme.surface;
+    ctx.fill(pill);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = theme.ink;
+    ctx.stroke(pill);
+    ctx.fillStyle = theme.ink;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, x, top + 12);
+  }
+
+  private drawAxis(ticks: Tick[], w: number, laneBottom: number, skip: [number, number]): void {
     const { ctx } = this;
     const theme = this.theme as CanvasTheme;
     ctx.fillStyle = theme.bg;
@@ -448,7 +472,10 @@ export class TimelineRenderer {
       ctx.lineTo(x, laneBottom + 6);
       ctx.stroke();
       const half = ctx.measureText(tick.label).width / 2;
-      ctx.fillText(tick.label, Math.min(Math.max(tick.x, half + 2), w - half - 2), laneBottom + 10);
+      const lx = Math.min(Math.max(tick.x, half + 2), w - half - 2);
+      // La etiqueta del centro tiene prioridad sobre las marcas que caerían debajo.
+      if (lx + half > skip[0] && lx - half < skip[1]) continue;
+      ctx.fillText(tick.label, lx, laneBottom + 10);
     }
   }
 
@@ -457,8 +484,6 @@ export class TimelineRenderer {
     const theme = this.theme as CanvasTheme;
     const color = theme.strokes[lane.lane] ?? theme.ink;
     const fill = theme.fills[lane.lane] ?? theme.surface;
-    // Cosmos: marcadores con halo luminoso.
-    const glow = this.themeId === 'cosmos';
     const rowCenter = (r: number) => lane.top + LANE_PADDING + r * ROW_HEIGHT + ROW_HEIGHT / 2;
     const selected = this.selection?.kind === 'event' ? this.selection.index : -1;
 
@@ -535,10 +560,6 @@ export class TimelineRenderer {
     ctx.lineWidth = 1;
     ctx.fillStyle = fill;
     ctx.strokeStyle = color;
-    if (glow) {
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 8;
-    }
     ctx.fill(bars);
     ctx.stroke(bars);
     ctx.fill(approxBars);
@@ -550,8 +571,6 @@ export class TimelineRenderer {
     ctx.setLineDash([]);
     ctx.fillStyle = color;
     ctx.fill(dots);
-    ctx.shadowBlur = 0;
-    ctx.shadowColor = 'transparent';
 
     // Rangos abiertos: cola que se desvanece hacia donde no hay fecha.
     for (const t of tails) {

@@ -30,34 +30,24 @@ describe('color', () => {
 });
 
 describe('periodos', () => {
-  it('cada periodo se activa al cruzar su límite', () => {
+  it('cada era se activa al cruzar su límite', () => {
     const cases: [number, string][] = [
-      [-13_800_000_000, 'cosmos'],
-      [-4_540_000_001, 'cosmos'],
-      [-4_540_000_000, 'deep'],
-      [-2_580_001, 'deep'],
-      [-2_580_000, 'paleo'],
-      [-9701, 'paleo'],
-      [-9700, 'neo'],
-      [-3301, 'neo'],
-      [-3300, 'ancient'],
-      [-801, 'ancient'],
-      [-800, 'classic'],
-      [475.9, 'classic'],
+      [-13_800_000_000, 'prehistory'],
+      [-3301, 'prehistory'],
+      [-3300, 'antiquity'],
+      [475.9, 'antiquity'],
       [476, 'medieval'],
-      [1491.9, 'medieval'],
-      [1492, 'modern'],
-      [1789, 'c19'],
-      [1913.9, 'c19'],
-      [1914, 'c20'],
-      [2026, 'c20'],
+      [1788.9, 'medieval'],
+      [1789, 'contemporary'],
+      [2026, 'contemporary'],
     ];
     for (const [t, id] of cases) expect(periodAt(t).id, `año ${t}`).toBe(id);
-    expect(PERIODS).toHaveLength(10);
+    expect(PERIODS).toHaveLength(4);
   });
 
   it('el selector elige el neutro o el del periodo', () => {
     expect(activeTheme('period', 1250).id).toBe('medieval');
+    expect(activeTheme('period', -4e9).id).toBe('prehistory');
     expect(activeTheme('neutral-light', 1250).id).toBe('neutral-light');
     expect(activeTheme('neutral-dark', -4e9).id).toBe('neutral-dark');
   });

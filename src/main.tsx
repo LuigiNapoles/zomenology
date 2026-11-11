@@ -22,6 +22,7 @@ import { fullView, viewAround, type ScaleMode, type View } from './timeline/scal
 import { EventPanel, focusEvent } from './ui/EventPanel';
 import { FiltersPanel } from './ui/FiltersPanel';
 import { Header } from './ui/Header';
+import { Minimap } from './ui/Minimap';
 import { SearchBox } from './ui/SearchBox';
 import { TimelineView } from './ui/TimelineView';
 import './themes/fonts.css';
@@ -248,6 +249,7 @@ function App() {
           />
         </div>
       )}
+      {dataset && <Minimap store={store} />}
     </div>
   );
 }

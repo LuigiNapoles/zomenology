@@ -131,46 +131,19 @@ body {
   pointer-events: none;
 }
 
-:root[data-period='cosmos'] .header::after {
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-}
-
-:root[data-period='deep'] .header::after {
-  height: 6px;
-  bottom: -6px;
-  background: repeating-linear-gradient(180deg, #6b5140 0 2px, #4a3729 2px 4px, #7d5f48 4px 6px);
-}
-
-/* Paleolítico: trazo de carbón irregular. */
-:root[data-period='paleo'] .header::after {
+/* Prehistoria: trazo de carbón irregular. */
+:root[data-period='prehistory'] .header::after {
   height: 6px;
   bottom: -5px;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='6'%3E%3Cpath d='M0 3 Q15 1 30 3.5 T60 2.5 T90 4 T120 3' stroke='%232A1E16' stroke-width='2.2' fill='none' stroke-linecap='round' opacity='0.85'/%3E%3C/svg%3E")
     repeat-x;
 }
 
-/* Neolítico: cenefa de cerámica incisa (zigzag). */
-:root[data-period='neo'] .header::after {
-  height: 8px;
-  bottom: -8px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='8'%3E%3Cpath d='M0 7 L4 1 L8 7 L12 1 L16 7' stroke='%238C5A2B' stroke-width='1.4' fill='none'/%3E%3C/svg%3E")
-    repeat-x;
-}
-
 /* Antigüedad: friso geométrico en oro. */
-:root[data-period='ancient'] .header::after {
+:root[data-period='antiquity'] .header::after {
   height: 8px;
   bottom: -8px;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='8'%3E%3Crect width='20' height='8' fill='%23C8A04A'/%3E%3Cpath d='M0 8 L5 2 L10 8 M10 8 L15 2 L20 8' stroke='%231F6F8B' stroke-width='1.2' fill='none'/%3E%3C/svg%3E")
-    repeat-x;
-}
-
-/* Mundo clásico: greca. */
-:root[data-period='classic'] .header::after {
-  height: 10px;
-  bottom: -10px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='10'%3E%3Cpath d='M0 9 H16 V1 H4 V6 H12 V4 H8' stroke='%239E2B25' stroke-width='1.5' fill='none'/%3E%3C/svg%3E")
     repeat-x;
 }
 
@@ -189,17 +162,4 @@ body {
   font-size: 2.6em;
   line-height: 0.8;
   color: var(--ornament-2);
-}
-
-:root[data-period='modern'] .header::after {
-  height: 3px;
-  bottom: -3px;
-  background: repeating-linear-gradient(135deg, var(--accent) 0 1px, transparent 1px 4px);
-}
-
-/* Siglo XIX: filetes dobles de periódico. */
-:root[data-period='c19'] .header::after {
-  height: 5px;
-  bottom: -5px;
-  background: linear-gradient(180deg, var(--ink) 0 2px, transparent 2px 4px, var(--ink) 4px 5px);
 }

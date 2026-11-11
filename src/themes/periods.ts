@@ -1,32 +1,16 @@
 import { MACRO_COLORS } from './macros';
 import { WHITE, contrast, hex, luminance, mix, toHex, type RGB } from './color';
 
-/** Los 10 estilos por periodo y los dos neutros. */
-export type PeriodId =
-  | 'cosmos'
-  | 'deep'
-  | 'paleo'
-  | 'neo'
-  | 'ancient'
-  | 'classic'
-  | 'medieval'
-  | 'modern'
-  | 'c19'
-  | 'c20';
+/**
+ * Estilos por periodo: 4 grandes eras (decisión del 11/11/2026, para que el estilo cambie
+ * menos veces), cada una con la paleta de uno de los 10 estilos de docs/PROYECTO.md.
+ */
+export type PeriodId = 'prehistory' | 'antiquity' | 'medieval' | 'contemporary';
 export type ThemeId = PeriodId | 'neutral-light' | 'neutral-dark';
 /** Elección del usuario en el selector de estilo. */
 export type StyleChoice = 'period' | 'neutral-light' | 'neutral-dark';
 
-export type TextureId =
-  | 'stars'
-  | 'strata'
-  | 'limestone'
-  | 'clay'
-  | 'papyrus'
-  | 'marble'
-  | 'parchment'
-  | 'engraving'
-  | 'newsprint';
+export type TextureId = 'limestone' | 'papyrus' | 'parchment';
 
 export interface Theme {
   id: ThemeId;
@@ -45,56 +29,28 @@ export interface Theme {
   /** Colores de adorno (oro, ultramar…). */
   ornament?: string;
   ornament2?: string;
+  /** Color de la era en el minimapa. */
+  band: string;
 }
 
-/** Los 10 periodos, en orden. Límites y paletas de docs/PROYECTO.md. */
+/** Las 4 eras, en orden. */
 export const PERIODS: readonly Theme[] = [
   {
-    id: 'cosmos',
-    name: 'Cosmos',
+    // Estilo «Paleolítico»: pintura rupestre.
+    id: 'prehistory',
+    name: 'Prehistoria',
     from: -Infinity,
-    bg: '#0B0E1A',
-    surface: '#151A2E',
-    ink: '#E6E9F5',
-    accent: '#8AB4FF',
-    titleFont: 'Space Grotesk',
-    texture: 'stars',
-  },
-  {
-    id: 'deep',
-    name: 'Tierra profunda',
-    from: -4_540_000_000,
-    bg: '#2B211B',
-    surface: '#3A2D24',
-    ink: '#F1E6D8',
-    accent: '#D9822B',
-    titleFont: 'Fraunces',
-    texture: 'strata',
-  },
-  {
-    id: 'paleo',
-    name: 'Paleolítico',
-    from: -2_580_000,
     bg: '#E9DCC6',
     surface: '#F3EADB',
     ink: '#2A1E16',
     accent: '#A8432A',
     titleFont: 'Caveat Brush',
     texture: 'limestone',
+    band: '#A8432A',
   },
   {
-    id: 'neo',
-    name: 'Neolítico',
-    from: -9700,
-    bg: '#EADBC4',
-    surface: '#F5ECDD',
-    ink: '#3B2A1E',
-    accent: '#8C5A2B',
-    titleFont: 'Josefin Slab',
-    texture: 'clay',
-  },
-  {
-    id: 'ancient',
+    // Estilo «Antigüedad»: papiro y lapislázuli.
+    id: 'antiquity',
     name: 'Antigüedad',
     from: -3300,
     bg: '#EFE3C2',
@@ -104,21 +60,12 @@ export const PERIODS: readonly Theme[] = [
     titleFont: 'Marcellus',
     texture: 'papyrus',
     ornament: '#C8A04A',
+    band: '#1F6F8B',
   },
   {
-    id: 'classic',
-    name: 'Mundo clásico',
-    from: -800,
-    bg: '#F4F1EA',
-    surface: '#FFFFFF',
-    ink: '#1E1E1E',
-    accent: '#9E2B25',
-    titleFont: 'Cinzel',
-    texture: 'marble',
-  },
-  {
+    // Estilo «Edad Media»: manuscrito iluminado.
     id: 'medieval',
-    name: 'Edad Media',
+    name: 'Edad Media y Moderna',
     from: 476,
     bg: '#F1E7D0',
     surface: '#F8F1E1',
@@ -129,49 +76,30 @@ export const PERIODS: readonly Theme[] = [
     texture: 'parchment',
     ornament: '#B8902F',
     ornament2: '#1F3A7A',
+    band: '#B8902F',
   },
   {
-    id: 'modern',
-    name: 'Edad Moderna',
-    from: 1492,
-    bg: '#F3EEE3',
-    surface: '#FBF8F1',
-    ink: '#1D1B18',
-    accent: '#2E5B4E',
-    titleFont: 'IM Fell English',
-    texture: 'engraving',
-  },
-  {
-    id: 'c19',
-    name: 'Siglo XIX',
+    // Estilo «Siglos XX–XXI»: museo moderno.
+    id: 'contemporary',
+    name: 'Edad Contemporánea',
     from: 1789,
-    bg: '#F2EFE8',
-    surface: '#FFFFFF',
-    ink: '#111111',
-    accent: '#B22222',
-    titleFont: 'Playfair Display',
-    texture: 'newsprint',
-  },
-  {
-    id: 'c20',
-    name: 'Siglos XX–XXI',
-    from: 1914,
     bg: '#FAFAF7',
     surface: '#FFFFFF',
     ink: '#111418',
     accent: '#E4572E',
     titleFont: 'Archivo',
     texture: null,
+    band: '#5B6470',
   },
 ];
 
-const C20 = PERIODS[PERIODS.length - 1] as Theme;
+const MODERN = PERIODS[PERIODS.length - 1] as Theme;
 
-/** Estilos neutros: la paleta de los siglos XX–XXI y su versión oscura, sin adornos. */
+/** Estilos neutros: la paleta de la Edad Contemporánea y su versión oscura, sin adornos. */
 export const NEUTRAL_THEMES: readonly Theme[] = [
-  { ...C20, id: 'neutral-light', name: 'Neutro claro' },
+  { ...MODERN, id: 'neutral-light', name: 'Neutro claro' },
   {
-    ...C20,
+    ...MODERN,
     id: 'neutral-dark',
     name: 'Neutro oscuro',
     bg: '#121418',
@@ -184,7 +112,7 @@ export const NEUTRAL_THEMES: readonly Theme[] = [
 export const ALL_THEMES: readonly Theme[] = [...PERIODS, ...NEUTRAL_THEMES];
 
 export function themeById(id: ThemeId): Theme {
-  return ALL_THEMES.find((t) => t.id === id) ?? C20;
+  return ALL_THEMES.find((t) => t.id === id) ?? MODERN;
 }
 
 /** Periodo al que pertenece el instante t (el centro de la vista). */

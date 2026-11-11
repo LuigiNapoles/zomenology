@@ -43,7 +43,7 @@ export class Store {
   /** Selector de estilo: por periodo, neutro claro u oscuro. */
   style: StyleChoice = 'period';
   /** Estilo activo, derivado del selector y de la fecha del centro. */
-  theme: ThemeId = 'c20';
+  theme: ThemeId = 'contemporary';
   /** Ancho del eje en píxeles CSS. */
   width = 1;
   private listeners = new Set<Listener>();
