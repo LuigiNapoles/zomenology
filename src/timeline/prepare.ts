@@ -16,10 +16,17 @@ export interface PreparedEvents {
   open: Uint8Array;
   /** Carril = macrocategoría. */
   lane: Uint8Array;
+  /** Índice de sección. */
+  section: Uint8Array;
+  /** Tipo de fecha como índice en DATE_TYPES. */
+  type: Uint8Array;
   /** Índices ordenados por prioridad de etiqueta: periodos más largos y descripciones más largas primero. */
   order: Int32Array;
   labels: string[];
 }
+
+/** Códigos de tipo de fecha, en el orden de los filtros. */
+export const DATE_TYPES = ['e', 'v', 'm', 'f', 'n'] as const;
 
 export function labelText(description: string): string {
   if (description.length <= LABEL_MAX_CHARS) return description;
@@ -38,6 +45,8 @@ export function prepareEvents(data: Pick<DataFile, 'events' | 'sections'>): Prep
     approx: new Uint8Array(count),
     open: new Uint8Array(count),
     lane: new Uint8Array(count),
+    section: new Uint8Array(count),
+    type: new Uint8Array(count),
     order: new Int32Array(count),
     labels: new Array<string>(count),
   };
@@ -50,6 +59,8 @@ export function prepareEvents(data: Pick<DataFile, 'events' | 'sections'>): Prep
     prepared.approx[i] = e.ap ?? 0;
     prepared.open[i] = e.x ?? 0;
     prepared.lane[i] = data.sections[e.s]?.macro ?? 0;
+    prepared.section[i] = e.s;
+    prepared.type[i] = Math.max(0, DATE_TYPES.indexOf(e.t ?? 'e'));
     prepared.labels[i] = labelText(e.d);
     duration[i] = span.point ? 0 : span.end - span.start;
   });

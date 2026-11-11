@@ -164,3 +164,33 @@ export function formatDuration(
   if (years === 1) return '1 año';
   return `${formatNumber(years, 0)} años`;
 }
+
+/**
+ * Lee una fecha escrita por el usuario: «1500», «-500», «500 a.C.», «45 ka», «2,5 Ma», «4.600 Ma».
+ * Devuelve el comienzo y el final (exclusivo) en tiempo continuo, o null si no se entiende.
+ * Para años, el final es el final de ese año; para ka y Ma, el propio instante.
+ */
+export function parseYearInput(input: string): { start: number; end: number } | null {
+  const text = input.trim().toLowerCase().replace(/\s+/g, ' ');
+  const m = /^(-?)\s*([\d.,']+)\s*(ma|ka|ka bp|a\.? ?c\.?|d\.? ?c\.?)?$/.exec(text);
+  if (!m) return null;
+  const [, minus, digits = '', unit = ''] = m;
+  let normalized = digits.replace(/'/g, ',');
+  if (normalized.includes(',')) {
+    normalized = normalized.replace(/\./g, '').replace(',', '.');
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(normalized)) {
+    normalized = normalized.replace(/\./g, '');
+  }
+  const n = Number(normalized);
+  if (!Number.isFinite(n) || normalized === '' || /,.*,/.test(digits)) return null;
+  const sign = minus ? -1 : 1;
+  if (unit === 'ma') return { start: -sign * n * 1e6, end: -sign * n * 1e6 };
+  if (unit.startsWith('ka')) {
+    const t = BP_REF - sign * n * 1000;
+    return { start: t, end: t };
+  }
+  if (!Number.isInteger(n) || n === 0) return null;
+  const year = unit.startsWith('a') ? -n : sign * n;
+  if (unit.startsWith('a') && minus) return null;
+  return { start: year, end: year + 1 };
+}

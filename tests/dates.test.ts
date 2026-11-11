@@ -11,6 +11,7 @@ import {
   formatOriginalDate,
   formatSpan,
   formatYear,
+  parseYearInput,
   toRoman,
 } from '../src/format/dates';
 
@@ -122,5 +123,29 @@ describe('ficha: fecha original y duración', () => {
   it('nombres de tipo de fecha', () => {
     expect(DATE_TYPE_NAMES.v).toBe('Vida');
     expect(DATE_TYPE_NAMES.n).toBe('Nacimiento');
+  });
+});
+
+describe('parseYearInput', () => {
+  it('entiende años, a.C., ka y Ma', () => {
+    expect(parseYearInput('1500')).toEqual({ start: 1500, end: 1501 });
+    expect(parseYearInput('-500')).toEqual({ start: -500, end: -499 });
+    expect(parseYearInput('500 a.C.')).toEqual({ start: -500, end: -499 });
+    expect(parseYearInput('500 a. C.')).toEqual({ start: -500, end: -499 });
+    expect(parseYearInput('500 ac')).toEqual({ start: -500, end: -499 });
+    expect(parseYearInput('1492 d.C.')).toEqual({ start: 1492, end: 1493 });
+    expect(parseYearInput('45 ka')).toEqual({ start: -43_050, end: -43_050 });
+    expect(parseYearInput('6 ka BP')).toEqual({ start: -4050, end: -4050 });
+    expect(parseYearInput('2,5 Ma')).toEqual({ start: -2_500_000, end: -2_500_000 });
+    expect(parseYearInput("2'58 Ma")).toEqual({ start: -2_580_000, end: -2_580_000 });
+    expect(parseYearInput('4.600 Ma')).toEqual({ start: -4.6e9, end: -4.6e9 });
+    expect(parseYearInput('13.800 ma')).toEqual({ start: -1.38e10, end: -1.38e10 });
+    expect(parseYearInput('10.000 a.C.')).toEqual({ start: -10_000, end: -9999 });
+  });
+
+  it('rechaza lo que no es una fecha', () => {
+    for (const bad of ['', 'hola', '0', '1,5', '12 años', '-500 a.C.', '1,2,3 Ma']) {
+      expect(parseYearInput(bad), bad).toBeNull();
+    }
   });
 });

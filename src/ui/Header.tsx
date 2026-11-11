@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { formatInstant, formatSpan } from '../format/dates';
 import type { Store } from '../state/store';
@@ -6,6 +7,8 @@ import { centerTime, visibleYears, type ScaleMode } from '../timeline/scale';
 
 interface Props {
   store: Store;
+  /** Buscador y botón de filtros (cuando ya hay datos). */
+  children?: ComponentChildren;
 }
 
 function useView(store: Store) {
@@ -19,7 +22,7 @@ const MODES: { mode: ScaleMode; label: string }[] = [
   { mode: 'log', label: 'Logarítmica' },
 ];
 
-export function Header({ store }: Props) {
+export function Header({ store, children }: Props) {
   const view = useView(store);
   const years = visibleYears(view);
 
@@ -55,7 +58,8 @@ export function Header({ store }: Props) {
             +
           </button>
         </div>
-        <p class="status" aria-live="polite">
+        {children}
+        <p class="status">
           Centro: <strong>{formatInstant(centerTime(view), years)}</strong> · En pantalla:{' '}
           {formatSpan(years)}
         </p>

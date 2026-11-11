@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { compileFilter } from '../state/filters';
 import type { Store } from '../state/store';
 import { macroColor } from '../themes/macros';
 import { clusterAction } from '../timeline/cluster';
@@ -36,9 +37,11 @@ export function TimelineView({ store, events, macros, onRenderer }: Props) {
     observer.observe(host);
     resize();
     renderer.setSelection(store.selection);
+    renderer.setFilter(compileFilter(store.filters, events));
 
     let lastView = store.view;
     let lastSelection = store.selection;
+    let lastFilters = store.filters;
     const unsubscribe = store.subscribe(() => {
       if (store.view !== lastView) {
         lastView = store.view;
@@ -47,6 +50,10 @@ export function TimelineView({ store, events, macros, onRenderer }: Props) {
       if (store.selection !== lastSelection) {
         lastSelection = store.selection;
         renderer.setSelection(store.selection);
+      }
+      if (store.filters !== lastFilters) {
+        lastFilters = store.filters;
+        renderer.setFilter(compileFilter(store.filters, events));
       }
     });
 

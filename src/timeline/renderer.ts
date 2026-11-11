@@ -87,6 +87,7 @@ export class TimelineRenderer {
   private laneSignature = '';
   private selection: Selection = null;
   private tints: string[] = [];
+  private filter: ((i: number) => boolean) | null = null;
 
   /** Duración del último pintado, en ms. */
   lastDrawMs = 0;
@@ -131,6 +132,13 @@ export class TimelineRenderer {
       this.settled = true;
       this.requestDraw();
     }, RELAYOUT_DELAY_MS);
+    this.requestDraw();
+  }
+
+  /** Solo se pintan los eventos que pasan el filtro (null = todos). */
+  setFilter(filter: ((i: number) => boolean) | null): void {
+    this.filter = filter;
+    this.layout = null;
     this.requestDraw();
   }
 
@@ -200,6 +208,7 @@ export class TimelineRenderer {
       w,
       laneHeight,
       this.labelWidth,
+      this.filter ?? undefined,
     );
     const lanes: DrawLane[] = base.lanes.map((lane) => {
       const rowItems: PlacedItem[][] = Array.from({ length: lane.eventRows }, () => []);

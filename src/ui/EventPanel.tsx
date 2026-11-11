@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { DataFile, TimelineEvent } from '../data/types';
 import { DATE_TYPE_NAMES, formatDuration, formatOriginalDate } from '../format/dates';
-import type { Selection, Store } from '../state/store';
+import { compileFilter } from '../state/filters';
+import { eventHash } from '../state/persist';
+import type { Store } from '../state/store';
 import { macroColor } from '../themes/macros';
 import { viewForEvent } from '../timeline/focus';
 import type { PreparedEvents } from '../timeline/prepare';
@@ -9,18 +11,22 @@ import type { PreparedEvents } from '../timeline/prepare';
 interface Props {
   store: Store;
   file: DataFile;
+  undated: DataFile;
   data: PreparedEvents;
 }
 
-function useSelection(store: Store): Selection {
-  const [selection, setSelection] = useState(store.selection);
-  useEffect(() => store.subscribe(() => setSelection(store.selection)), [store]);
-  return selection;
+function useStoreState(store: Store) {
+  const [state, setState] = useState({ selection: store.selection, filters: store.filters });
+  useEffect(
+    () => store.subscribe(() => setState({ selection: store.selection, filters: store.filters })),
+    [store],
+  );
+  return state;
 }
 
-/** Enlace directo al evento: #e42. */
+/** Enlace directo al evento: …/#e42. */
 export function eventLink(id: number): string {
-  return `${location.origin}${location.pathname}#e${id}`;
+  return `${location.origin}${location.pathname}${location.search}${eventHash(id)}`;
 }
 
 function durationText(e: TimelineEvent, data: PreparedEvents, index: number): string | null {
@@ -38,8 +44,22 @@ function durationText(e: TimelineEvent, data: PreparedEvents, index: number): st
   );
 }
 
-export function EventPanel({ store, file, data }: Props) {
-  const selection = useSelection(store);
+/** Centra el eje en el evento i del eje (con animación). */
+export function focusEvent(store: Store, data: PreparedEvents, index: number): void {
+  store.select({ kind: 'event', index });
+  store.animateTo(
+    viewForEvent(
+      data.start[index] as number,
+      data.end[index] as number,
+      data.point[index] === 1,
+      store.view,
+    ),
+  );
+}
+
+export function EventPanel({ store, file, undated, data }: Props) {
+  const { selection, filters } = useStoreState(store);
+  const filter = useMemo(() => compileFilter(filters, data), [filters, data]);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [copied, setCopied] = useState(false);
 
@@ -49,21 +69,7 @@ export function EventPanel({ store, file, data }: Props) {
   }, [selection]);
 
   if (!selection) return null;
-
   const close = () => store.select(null);
-  const open = (index: number, center: boolean) => {
-    store.select({ kind: 'event', index });
-    if (center) {
-      store.animateTo(
-        viewForEvent(
-          data.start[index] as number,
-          data.end[index] as number,
-          data.point[index] === 1,
-          store.view,
-        ),
-      );
-    }
-  };
 
   if (selection.kind === 'list') {
     const members = [...selection.members].sort(
@@ -72,6 +78,7 @@ export function EventPanel({ store, file, data }: Props) {
     return (
       <div class="panel" role="dialog" aria-labelledby="panel-title">
         <div class="panel-bar">
+          <span class="panel-spacer" />
           <button type="button" class="icon-button" aria-label="Cerrar" onClick={close}>
             ×
           </button>
@@ -87,7 +94,7 @@ export function EventPanel({ store, file, data }: Props) {
             const e = data.events[i] as TimelineEvent;
             return (
               <li key={e.id}>
-                <button type="button" onClick={() => open(i, false)}>
+                <button type="button" onClick={() => store.select({ kind: 'event', index: i })}>
                   <span class="group-date">{formatOriginalDate(e.f, e.e)}</span>
                   <span>{e.d}</span>
                 </button>
@@ -99,11 +106,25 @@ export function EventPanel({ store, file, data }: Props) {
     );
   }
 
+  const isDated = selection.kind === 'event';
   const index = selection.index;
-  const e = data.events[index] as TimelineEvent;
+  const e = (isDated ? data.events[index] : undated.events[index]) as TimelineEvent | undefined;
+  if (!e) return null;
   const section = file.sections[e.s];
   const macro = section?.macro ?? 0;
-  const duration = durationText(e, data, index);
+  const duration = isDated ? durationText(e, data, index) : null;
+  const hidden = isDated && filter !== null && !filter(index);
+
+  // Anterior y siguiente en orden cronológico, saltando los que ocultan los filtros.
+  const neighbour = (dir: 1 | -1): number => {
+    for (let i = index + dir; i >= 0 && i < data.count; i += dir) {
+      if (!filter || filter(i)) return i;
+    }
+    return -1;
+  };
+  const prev = isDated ? neighbour(-1) : -1;
+  const next = isDated ? neighbour(1) : -1;
+
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(eventLink(e.id));
@@ -116,24 +137,28 @@ export function EventPanel({ store, file, data }: Props) {
   return (
     <div class="panel" role="dialog" aria-labelledby="panel-title">
       <div class="panel-bar">
-        <button
-          type="button"
-          class="icon-button"
-          aria-label="Evento anterior"
-          disabled={index === 0}
-          onClick={() => open(index - 1, true)}
-        >
-          ←
-        </button>
-        <button
-          type="button"
-          class="icon-button"
-          aria-label="Evento siguiente"
-          disabled={index === data.count - 1}
-          onClick={() => open(index + 1, true)}
-        >
-          →
-        </button>
+        {isDated && (
+          <>
+            <button
+              type="button"
+              class="icon-button"
+              aria-label="Evento anterior"
+              disabled={prev < 0}
+              onClick={() => focusEvent(store, data, prev)}
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              class="icon-button"
+              aria-label="Evento siguiente"
+              disabled={next < 0}
+              onClick={() => focusEvent(store, data, next)}
+            >
+              →
+            </button>
+          </>
+        )}
         <span class="panel-spacer" />
         <button type="button" class="icon-button" aria-label="Cerrar" onClick={close}>
           ×
@@ -147,19 +172,29 @@ export function EventPanel({ store, file, data }: Props) {
       <h2 id="panel-title" class="panel-title" tabIndex={-1} ref={titleRef}>
         {e.d}
       </h2>
+      {!isDated && <p class="panel-warning">Sin fecha: no aparece en el eje</p>}
       {e.ap === 1 && <p class="panel-warning">Fecha aproximada</p>}
+      {hidden && <p class="panel-note">Este evento está oculto por los filtros activos.</p>}
 
       <dl class="panel-fields">
-        <dt>Fecha</dt>
-        <dd>{formatOriginalDate(e.f, e.e)}</dd>
+        {isDated && (
+          <>
+            <dt>Fecha</dt>
+            <dd>{formatOriginalDate(e.f, e.e)}</dd>
+          </>
+        )}
         {duration && (
           <>
             <dt>Duración</dt>
             <dd>{duration}</dd>
           </>
         )}
-        <dt>Tipo de fecha</dt>
-        <dd>{DATE_TYPE_NAMES[e.t ?? 'e']}</dd>
+        {e.t && (
+          <>
+            <dt>Tipo de fecha</dt>
+            <dd>{DATE_TYPE_NAMES[e.t]}</dd>
+          </>
+        )}
         {e.o && (
           <>
             <dt>Otras fechas</dt>
@@ -176,12 +211,16 @@ export function EventPanel({ store, file, data }: Props) {
         <button type="button" onClick={() => void copy()}>
           {copied ? 'Enlace copiado' : 'Copiar enlace'}
         </button>
-        <button type="button" onClick={() => open(index, true)}>
-          Centrar en el eje
-        </button>
-        <button type="button" disabled title="Disponible en una próxima versión">
-          ¿Qué pasaba a la vez?
-        </button>
+        {isDated && (
+          <>
+            <button type="button" onClick={() => focusEvent(store, data, index)}>
+              Centrar en el eje
+            </button>
+            <button type="button" disabled title="Disponible en una próxima versión">
+              ¿Qué pasaba a la vez?
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
