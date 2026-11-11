@@ -1,5 +1,7 @@
+import { activeTheme, type StyleChoice, type ThemeId } from '../themes/periods';
 import { DEFAULT_FILTERS, type Filters } from './filters';
 import {
+  centerTime,
   clampView,
   fullView,
   lerpView,
@@ -38,14 +40,29 @@ export class Store {
   view: View;
   selection: Selection = null;
   filters: Filters = DEFAULT_FILTERS;
+  /** Selector de estilo: por periodo, neutro claro u oscuro. */
+  style: StyleChoice = 'period';
+  /** Estilo activo, derivado del selector y de la fecha del centro. */
+  theme: ThemeId = 'c20';
   /** Ancho del eje en píxeles CSS. */
   width = 1;
   private listeners = new Set<Listener>();
   private animation = 0;
 
-  constructor(view: View = fullView('log'), filters: Filters = DEFAULT_FILTERS) {
+  constructor(
+    view: View = fullView('log'),
+    filters: Filters = DEFAULT_FILTERS,
+    style: StyleChoice = 'period',
+  ) {
     this.view = view;
     this.filters = filters;
+    this.style = style;
+    this.theme = activeTheme(style, centerTime(view)).id;
+  }
+
+  setStyle(style: StyleChoice): void {
+    this.style = style;
+    this.emit();
   }
 
   setFilters(filters: Filters): void {
@@ -59,6 +76,7 @@ export class Store {
   }
 
   private emit(): void {
+    this.theme = activeTheme(this.style, centerTime(this.view)).id;
     for (const listener of this.listeners) listener();
   }
 

@@ -1,11 +1,4 @@
-/* Estilos mínimos de la Fase 2: sin temas por periodo. */
-:root {
-  color-scheme: light;
-  --ink: #111418;
-  --line: #d0d0d0;
-  --surface: #ffffff;
-  --muted: #555555;
-}
+/* Estructura y controles. Los colores son variables del estilo activo (themes.css). */
 
 * {
   box-sizing: border-box;
@@ -15,9 +8,8 @@ html,
 body {
   margin: 0;
   height: 100%;
-  background: var(--surface);
+  background: var(--bg);
   color: var(--ink);
-  font-family: system-ui, sans-serif;
   font-size: 16px;
 }
 
@@ -113,7 +105,7 @@ body {
   padding: 0 8px;
   font-size: 14px;
   line-height: 1.2;
-  border-bottom: 1px solid #e3e3e0;
+  border-bottom: 1px solid var(--line);
 }
 
 .lane-text {
@@ -183,11 +175,12 @@ body {
 }
 
 .icon-button:hover:not(:disabled) {
-  background: #f0f0ee;
+  background: var(--hover);
 }
 
 .icon-button:disabled {
-  color: #b5b5b5;
+  color: var(--muted);
+  opacity: 0.6;
   cursor: default;
 }
 
@@ -260,7 +253,8 @@ body {
 }
 
 .panel-actions button:disabled {
-  color: #8a8a8a;
+  color: var(--muted);
+  opacity: 0.75;
   cursor: default;
 }
 
@@ -278,7 +272,7 @@ body {
   min-height: 44px;
   padding: 8px;
   border: none;
-  border-bottom: 1px solid #ececea;
+  border-bottom: 1px solid var(--line);
   background: none;
   color: var(--ink);
   font: inherit;
@@ -288,7 +282,7 @@ body {
 }
 
 .group-list button:hover {
-  background: #f6f6f3;
+  background: var(--hover);
 }
 
 .group-date {
@@ -360,7 +354,7 @@ body {
 }
 
 .search-hit.active {
-  background: #eef2f7;
+  background: var(--hover);
 }
 
 .search-desc {
@@ -478,12 +472,12 @@ body {
 }
 
 .range input[aria-invalid='true'] {
-  border-color: #b3261e;
+  border-color: var(--danger);
 }
 
 .filters-error {
   margin: 6px 0 0;
-  color: #b3261e;
+  color: var(--danger);
   font-size: 14px;
 }
 
@@ -552,6 +546,43 @@ body {
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
     border-right: none;
   }
+}
+
+/* Selector de estilo */
+.style-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.style-picker select {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+
+/* Campos y botones heredan los colores del estilo. */
+input,
+select,
+button {
+  color: var(--ink);
+}
+
+input[type='search'],
+input[type='text'] {
+  background: var(--surface);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
 }
 
 .message {

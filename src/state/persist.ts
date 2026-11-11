@@ -1,4 +1,5 @@
 import { clampView, type View } from '../timeline/scale';
+import type { StyleChoice } from '../themes/periods';
 import { sanitizeFilters, type Filters } from './filters';
 
 /** Enlace directo a un evento: «#e42». Devuelve el id o null. */
@@ -16,7 +17,10 @@ const STORAGE_KEY = 'cronologia:v1';
 export interface SavedState {
   view: View | null;
   filters: Filters | null;
+  style: StyleChoice | null;
 }
+
+const STYLES: readonly StyleChoice[] = ['period', 'neutral-light', 'neutral-dark'];
 
 function sanitizeView(value: unknown): View | null {
   if (typeof value !== 'object' || value === null) return null;
@@ -31,19 +35,20 @@ function sanitizeView(value: unknown): View | null {
 export function loadSaved(storage: Pick<Storage, 'getItem'> | null = safeStorage()): SavedState {
   try {
     const raw = storage?.getItem(STORAGE_KEY);
-    if (!raw) return { view: null, filters: null };
-    const parsed = JSON.parse(raw) as { view?: unknown; filters?: unknown };
+    if (!raw) return { view: null, filters: null, style: null };
+    const parsed = JSON.parse(raw) as { view?: unknown; filters?: unknown; style?: unknown };
     return {
       view: sanitizeView(parsed.view),
       filters: parsed.filters === undefined ? null : sanitizeFilters(parsed.filters),
+      style: STYLES.includes(parsed.style as StyleChoice) ? (parsed.style as StyleChoice) : null,
     };
   } catch {
-    return { view: null, filters: null };
+    return { view: null, filters: null, style: null };
   }
 }
 
 export function save(
-  state: { view: View; filters: Filters },
+  state: { view: View; filters: Filters; style: StyleChoice },
   storage: Pick<Storage, 'setItem'> | null = safeStorage(),
 ): void {
   try {

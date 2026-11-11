@@ -38,6 +38,7 @@ export function TimelineView({ store, events, macros, onRenderer }: Props) {
     resize();
     renderer.setSelection(store.selection);
     renderer.setFilter(compileFilter(store.filters, events));
+    renderer.setTheme(store.theme);
 
     let lastView = store.view;
     let lastSelection = store.selection;
@@ -51,6 +52,7 @@ export function TimelineView({ store, events, macros, onRenderer }: Props) {
         lastSelection = store.selection;
         renderer.setSelection(store.selection);
       }
+      renderer.setTheme(store.theme);
       if (store.filters !== lastFilters) {
         lastFilters = store.filters;
         renderer.setFilter(compileFilter(store.filters, events));

@@ -1,5 +1,7 @@
 import type { Selection } from '../state/store';
-import { macroColor, tint } from '../themes/macros';
+import { parseColor, toCss, type RGB } from '../themes/color';
+import { macroPalette, themeById, type ThemeId } from '../themes/periods';
+import { loadTexture } from '../themes/textures';
 import { bubbleLabel, bubbleWidth } from './cluster';
 import { INSIDE_PAD, LABEL_GAP, LANE_PADDING, ROW_HEIGHT, type PlacedItem } from './layout';
 import type { PreparedEvents } from './prepare';
@@ -20,18 +22,49 @@ import {
 export const AXIS_HEIGHT = 36;
 /** Espera tras el último cambio de vista antes de recolocar los eventos. */
 const RELAYOUT_DELAY_MS = 100;
-const FONT = '14px system-ui, sans-serif';
-const BOLD_FONT = 'bold 14px system-ui, sans-serif';
+const FONT = '14px "Source Sans 3", system-ui, sans-serif';
+const BOLD_FONT = '600 14px "Source Sans 3", system-ui, sans-serif';
+/** Duración del cambio de estilo (la misma que la transición CSS). */
+const THEME_FADE_MS = 600;
 
-const COLORS = {
-  background: '#ffffff',
-  laneAlt: '#f6f6f3',
-  laneLine: '#e3e3e0',
-  grid: '#e6e6e6',
-  milestone: '#b0b0b0',
-  axis: '#222222',
-  ink: '#111418',
-};
+/** Colores del estilo activo, leídos de las variables CSS (interpoladas durante el cambio). */
+interface CanvasTheme {
+  bg: string;
+  surface: string;
+  ink: string;
+  muted: string;
+  grid: string;
+  laneAlt: string;
+  line: string;
+  ornament: string;
+  strokes: string[];
+  fills: string[];
+}
+
+function readTheme(): CanvasTheme {
+  const style = getComputedStyle(document.documentElement);
+  const get = (name: string, fallback: string): RGB =>
+    parseColor(style.getPropertyValue(name)) ?? (parseColor(fallback) as RGB);
+  const bg = get('--bg', '#fafaf7');
+  const surface = get('--surface', '#ffffff');
+  const palette = macroPalette(bg, surface);
+  return {
+    bg: toCss(bg),
+    surface: toCss(surface),
+    ink: toCss(get('--ink', '#111418')),
+    muted: toCss(get('--muted', '#555555')),
+    grid: toCss(get('--grid', '#e6e6e6')),
+    laneAlt: toCss(get('--lane-alt', '#f3f3f0')),
+    line: toCss(get('--line', '#d0d0d0')),
+    ornament: toCss(get('--ornament', '#e4572e')),
+    strokes: palette.stroke.map((c) => toCss(c)),
+    fills: palette.fill.map((c) => toCss(c)),
+  };
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 
 /** Lo que hay bajo el puntero. */
 export type Hit = { kind: 'event'; index: number } | { kind: 'bubble'; members: number[] } | null;
@@ -86,7 +119,11 @@ export class TimelineRenderer {
   private labelWidths: Float32Array;
   private laneSignature = '';
   private selection: Selection = null;
-  private tints: string[] = [];
+  private themeId: ThemeId | null = null;
+  private previousThemeId: ThemeId | null = null;
+  private themeChangedAt = -Infinity;
+  private theme: CanvasTheme | null = null;
+  private patterns = new Map<ThemeId, CanvasPattern | null>();
   private filter: ((i: number) => boolean) | null = null;
 
   /** Duración del último pintado, en ms. */
@@ -105,7 +142,6 @@ export class TimelineRenderer {
     if (!ctx) throw new Error('El navegador no permite dibujar en canvas 2D');
     this.ctx = ctx;
     this.labelWidths = new Float32Array(data.count).fill(Number.NaN);
-    for (let m = 0; m < 12; m++) this.tints[m] = tint(macroColor(m), 0.72);
   }
 
   private mark(name: string, since: number): number {
@@ -140,6 +176,95 @@ export class TimelineRenderer {
     this.filter = filter;
     this.layout = null;
     this.requestDraw();
+  }
+
+  /** Cambia de estilo: los colores se interpolan (CSS) y la textura se funde en 600 ms. */
+  setTheme(id: ThemeId): void {
+    if (id === this.themeId) return;
+    this.previousThemeId = this.themeId;
+    this.themeId = id;
+    this.themeChangedAt = prefersReducedMotion() ? -Infinity : performance.now();
+    this.theme = null;
+    this.ensurePattern(id);
+    this.requestDraw();
+  }
+
+  /** Las tipografías han cargado: hay que volver a medir las etiquetas y recolocar. */
+  fontsChanged(): void {
+    this.labelWidths.fill(Number.NaN);
+    this.layout = null;
+    this.requestDraw();
+  }
+
+  private ensurePattern(id: ThemeId): void {
+    if (this.patterns.has(id)) return;
+    const texture = themeById(id).texture;
+    this.patterns.set(id, null);
+    if (!texture || id.startsWith('neutral')) return;
+    void loadTexture(texture)
+      .then((canvas) => {
+        this.patterns.set(id, this.ctx.createPattern(canvas, 'repeat'));
+        this.requestDraw();
+      })
+      .catch(() => undefined);
+  }
+
+  /** Textura del estilo; en Cosmos, con un paralaje suave al desplazar. */
+  private drawTexture(
+    id: ThemeId | null,
+    alpha: number,
+    w: number,
+    h: number,
+    left: number,
+    k: number,
+  ): void {
+    if (!id || alpha <= 0) return;
+    const pattern = this.patterns.get(id);
+    if (!pattern) return;
+    const { ctx } = this;
+    const parallax = id === 'cosmos' && !prefersReducedMotion() ? -((left * k * 0.04) % 512) : 0;
+    pattern.setTransform(new DOMMatrix().translateSelf(parallax, 0));
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = pattern;
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalAlpha = 1;
+  }
+
+  /** Separador entre carriles según el periodo. */
+  private drawSeparator(y: number, w: number, lane: number): void {
+    const { ctx } = this;
+    const theme = this.theme as CanvasTheme;
+    switch (this.themeId) {
+      case 'paleo': {
+        // Trazo de carbón irregular.
+        ctx.strokeStyle = theme.ink;
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        for (let x = 0; x <= w + 12; x += 12) {
+          const jitter = Math.sin(x * 0.07 + lane * 1.7) * 1.2 + Math.sin(x * 0.23 + lane) * 0.6;
+          if (x === 0) ctx.moveTo(x, y + jitter);
+          else ctx.lineTo(x, y + jitter);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        return;
+      }
+      case 'c19':
+        // Filetes dobles de periódico.
+        ctx.fillStyle = theme.ink;
+        ctx.fillRect(0, y - 3, w, 1);
+        ctx.fillRect(0, y - 1, w, 1);
+        return;
+      case 'ancient':
+      case 'medieval':
+        ctx.fillStyle = theme.ornament;
+        ctx.fillRect(0, y - 1, w, 1);
+        return;
+      default:
+        ctx.fillStyle = theme.line;
+        ctx.fillRect(0, y - 1, w, 1);
+    }
   }
 
   setSelection(selection: Selection): void {
@@ -244,9 +369,17 @@ export class TimelineRenderer {
     const t0 = performance.now();
     const { ctx, cssWidth: w, cssHeight: h } = this;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.fillStyle = COLORS.background;
-    ctx.fillRect(0, 0, w, h);
+    // Durante el cambio de estilo se leen los colores interpolados en cada fotograma.
+    const fade = Math.min(1, (t0 - this.themeChangedAt) / THEME_FADE_MS);
+    if (!this.theme || fade < 1) this.theme = readTheme();
+    const theme = this.theme;
     const laneBottom = h - AXIS_HEIGHT;
+    const left = view.center - view.span / 2;
+    const k = w / view.span;
+    ctx.fillStyle = theme.bg;
+    ctx.fillRect(0, 0, w, h);
+    this.drawTexture(this.previousThemeId, 1 - fade, w, laneBottom, left, k);
+    this.drawTexture(this.themeId, fade, w, laneBottom, left, k);
 
     let m = this.mark('clear', t0);
     const layout = this.ensureLayout(view, w, laneBottom);
@@ -256,17 +389,18 @@ export class TimelineRenderer {
     // Fondos de carril alternos y separadores
     layout.lanes.forEach((lane, i) => {
       if (i % 2 === 1) {
-        ctx.fillStyle = COLORS.laneAlt;
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = theme.laneAlt;
         ctx.fillRect(0, lane.top, w, lane.height);
+        ctx.globalAlpha = 1;
       }
-      ctx.fillStyle = COLORS.laneLine;
-      ctx.fillRect(0, lane.top + lane.height - 1, w, 1);
+      this.drawSeparator(lane.top + lane.height, w, lane.lane);
     });
 
     // Rejilla
     ctx.lineWidth = 1;
     for (const tick of ticks) {
-      ctx.strokeStyle = tick.milestone ? COLORS.milestone : COLORS.grid;
+      ctx.strokeStyle = tick.milestone ? theme.muted : theme.grid;
       const x = Math.round(tick.x) + 0.5;
       ctx.beginPath();
       ctx.moveTo(x, 0);
@@ -275,8 +409,6 @@ export class TimelineRenderer {
     }
     m = this.mark('grid', m);
 
-    const left = view.center - view.span / 2;
-    const k = w / view.span;
     const coords = this.coordsFor(view.mode);
     ctx.save();
     ctx.beginPath();
@@ -288,21 +420,24 @@ export class TimelineRenderer {
 
     this.drawAxis(ticks, w, laneBottom);
     this.mark('axis', m);
+    // Mientras dura el cambio de estilo, se sigue pintando cada fotograma.
+    if (fade < 1) this.requestDraw();
     this.lastDrawMs = performance.now() - t0;
     this.onDraw?.(this.lastDrawMs);
   }
 
   private drawAxis(ticks: Tick[], w: number, laneBottom: number): void {
     const { ctx } = this;
-    ctx.fillStyle = COLORS.background;
+    const theme = this.theme as CanvasTheme;
+    ctx.fillStyle = theme.bg;
     ctx.fillRect(0, laneBottom, w, AXIS_HEIGHT);
     ctx.lineWidth = 1;
-    ctx.strokeStyle = COLORS.axis;
+    ctx.strokeStyle = theme.ink;
     ctx.beginPath();
     ctx.moveTo(0, laneBottom + 0.5);
     ctx.lineTo(w, laneBottom + 0.5);
     ctx.stroke();
-    ctx.fillStyle = COLORS.ink;
+    ctx.fillStyle = theme.ink;
     ctx.textBaseline = 'top';
     ctx.textAlign = 'center';
     for (const tick of ticks) {
@@ -319,8 +454,11 @@ export class TimelineRenderer {
 
   private drawLane(lane: DrawLane, coords: EventCoords, left: number, k: number, w: number): void {
     const { ctx, data } = this;
-    const color = macroColor(lane.lane);
-    const fill = this.tints[lane.lane] ?? '#dddddd';
+    const theme = this.theme as CanvasTheme;
+    const color = theme.strokes[lane.lane] ?? theme.ink;
+    const fill = theme.fills[lane.lane] ?? theme.surface;
+    // Cosmos: marcadores con halo luminoso.
+    const glow = this.themeId === 'cosmos';
     const rowCenter = (r: number) => lane.top + LANE_PADDING + r * ROW_HEIGHT + ROW_HEIGHT / 2;
     const selected = this.selection?.kind === 'event' ? this.selection.index : -1;
 
@@ -397,6 +535,10 @@ export class TimelineRenderer {
     ctx.lineWidth = 1;
     ctx.fillStyle = fill;
     ctx.strokeStyle = color;
+    if (glow) {
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
+    }
     ctx.fill(bars);
     ctx.stroke(bars);
     ctx.fill(approxBars);
@@ -408,12 +550,14 @@ export class TimelineRenderer {
     ctx.setLineDash([]);
     ctx.fillStyle = color;
     ctx.fill(dots);
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
 
     // Rangos abiertos: cola que se desvanece hacia donde no hay fecha.
     for (const t of tails) {
       const gradient = ctx.createLinearGradient(t.x, 0, t.x + t.dir * TAIL, 0);
       gradient.addColorStop(0, color);
-      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = gradient;
       ctx.fillRect(t.dir === 1 ? t.x : t.x - TAIL, t.y - 2, TAIL, 4);
     }
@@ -424,10 +568,10 @@ export class TimelineRenderer {
     for (const label of labels) {
       let x = label.x;
       if (label.type && label.type !== 'e') {
-        drawTypeIcon(ctx, label.type, x, label.y, COLORS.ink);
+        drawTypeIcon(ctx, label.type, x, label.y, theme.ink);
         x += ICON_WIDTH;
       }
-      ctx.fillStyle = COLORS.ink;
+      ctx.fillStyle = theme.ink;
       ctx.fillText(label.text, x, label.y + 1);
     }
 
@@ -436,18 +580,18 @@ export class TimelineRenderer {
     for (const b of bubbles) {
       const path = new Path2D();
       path.roundRect(b.x - b.width / 2, bubbleCy - 9, b.width, 18, 9);
-      ctx.fillStyle = COLORS.background;
+      ctx.fillStyle = theme.surface;
       ctx.fill(path);
       ctx.lineWidth = b.selected ? 3 : 1.5;
-      ctx.strokeStyle = b.selected ? COLORS.ink : color;
+      ctx.strokeStyle = b.selected ? theme.ink : color;
       ctx.stroke(path);
-      ctx.fillStyle = COLORS.ink;
+      ctx.fillStyle = theme.ink;
       ctx.fillText(bubbleLabel(b.count), b.x, bubbleCy + 1);
     }
 
     if (ring) {
       ctx.lineWidth = 2;
-      ctx.strokeStyle = COLORS.ink;
+      ctx.strokeStyle = theme.ink;
       ctx.stroke(ring);
     }
   }

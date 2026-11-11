@@ -1,0 +1,13 @@
+Tipografías de Google Fonts bajo la SIL Open Font License 1.1 (https://openfontlicense.org):
+- Source Sans 3
+- Space Grotesk
+- Fraunces
+- Caveat Brush
+- Josefin Slab
+- Marcellus
+- Cinzel
+- Cormorant Garamond
+- UnifrakturCook
+- IM Fell English
+- Playfair Display
+- Archivo

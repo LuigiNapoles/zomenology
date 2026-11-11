@@ -13,6 +13,7 @@ import {
 } from './state/filters';
 import { eventHash, loadSaved, parseEventHash, save } from './state/persist';
 import { Store } from './state/store';
+import { applyTheme, installThemes } from './themes/themeController';
 import { viewForEvent } from './timeline/focus';
 import { attachKeyboard } from './timeline/interaction';
 import { prepareEvents, type PreparedEvents } from './timeline/prepare';
@@ -23,7 +24,9 @@ import { FiltersPanel } from './ui/FiltersPanel';
 import { Header } from './ui/Header';
 import { SearchBox } from './ui/SearchBox';
 import { TimelineView } from './ui/TimelineView';
+import './themes/fonts.css';
 import './ui/app.css';
+import './themes/themes.css';
 
 /**
  * Solo en desarrollo: ?c=1851.5&y=0.5&m=lin fija la vista inicial, ?sel=42 abre la ficha
@@ -44,7 +47,20 @@ const saved = loadSaved();
 const store = new Store(
   dev.view ?? saved.view ?? fullView('log'),
   saved.filters ?? DEFAULT_FILTERS,
+  saved.style ?? 'period',
 );
+
+// Estilo por periodo: variables CSS de cada estilo y el activo según el centro de la vista.
+installThemes();
+applyTheme(store.theme);
+store.subscribe(() => applyTheme(store.theme));
+
+/** El eje dibuja con «Source Sans 3»: al cargar las tipografías hay que volver a medir. */
+let currentRenderer: TimelineRenderer | null = null;
+if ('fonts' in document) {
+  document.fonts.addEventListener('loadingdone', () => currentRenderer?.fontsChanged());
+  void document.fonts.load('14px "Source Sans 3"').then(() => currentRenderer?.fontsChanged());
+}
 
 interface Dataset {
   file: DataFile;
@@ -135,7 +151,7 @@ function App() {
 
     let saveTimer = 0;
     let lastSelection = store.selection;
-    const persist = () => save({ view: store.view, filters: store.filters });
+    const persist = () => save({ view: store.view, filters: store.filters, style: store.style });
     const unsubscribe = store.subscribe(() => {
       if (store.selection !== lastSelection) {
         lastSelection = store.selection;
@@ -166,17 +182,17 @@ function App() {
     [filters, dataset],
   );
 
-  // Solo en desarrollo: acceso desde la consola (window.__app) y medición con ?bench=1.
+  // Referencia al dibujo del eje; en desarrollo, también window.__app y ?bench=1.
   const onRenderer = useMemo(
-    () =>
-      import.meta.env.DEV
-        ? (renderer: TimelineRenderer) => {
-            (window as unknown as { __app: unknown }).__app = { store, renderer };
-            if (dev.bench) {
-              void import('./timeline/bench').then(({ runBench }) => runBench(store, renderer));
-            }
-          }
-        : undefined,
+    () => (renderer: TimelineRenderer) => {
+      currentRenderer = renderer;
+      if (import.meta.env.DEV) {
+        (window as unknown as { __app: unknown }).__app = { store, renderer };
+        if (dev.bench) {
+          void import('./timeline/bench').then(({ runBench }) => runBench(store, renderer));
+        }
+      }
+    },
     [],
   );
 
