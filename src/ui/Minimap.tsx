@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { formatInstant } from '../format/dates';
 import type { Store } from '../state/store';
 import { parseColor, toCss } from '../themes/color';
-import { PERIODS } from '../themes/periods';
+import { ERAS } from '../timeline/eras';
 import {
   JUMPS,
   jumpView,
@@ -48,23 +48,25 @@ export function Minimap({ store }: Props) {
       const style = getComputedStyle(document.documentElement);
       const css = (name: string, fallback: string) =>
         toCss(parseColor(style.getPropertyValue(name)) ?? parseColor(fallback) ?? [0, 0, 0]);
-      const ink = css('--ink', '#111418');
+      const ink = css('--ink', '#1f1e1b');
+      const accent = css('--accent', '#b05730');
+      const tones = [css('--soft', '#f5f4ef'), css('--lane-alt', '#f8f8f7')];
       ctx.fillStyle = css('--surface', '#ffffff');
       ctx.fillRect(0, 0, width, height);
 
-      // Eras coloreadas con su color de periodo.
+      // Eras en dos tonos alternos y separadas por una línea fina.
       ctx.font = FONT;
       ctx.textBaseline = 'middle';
-      PERIODS.forEach((era, i) => {
-        const next = PERIODS[i + 1];
+      ERAS.forEach((era, i) => {
+        const next = ERAS[i + 1];
         const x0 = minimapX(Math.max(era.from, T_MIN), width);
         const x1 = next ? minimapX(next.from, width) : width;
-        ctx.globalAlpha = 0.3;
-        ctx.fillStyle = era.band;
+        ctx.fillStyle = tones[i % 2] ?? ink;
         ctx.fillRect(x0, 0, x1 - x0, height);
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = era.band;
-        ctx.fillRect(x0, height - 4, x1 - x0, 4);
+        if (i > 0) {
+          ctx.fillStyle = css('--line', '#dddddd');
+          ctx.fillRect(Math.round(x0), 0, 1, height);
+        }
         const text = era.name;
         const tw = ctx.measureText(text).width;
         if (tw + 12 < x1 - x0) {
@@ -73,29 +75,25 @@ export function Minimap({ store }: Props) {
         }
       });
 
-      // Ventana visible del eje principal.
+      // Ventana visible del eje principal, en terracota.
       const { x0, x1 } = windowRect(store.view, store.width, width);
-      ctx.fillStyle = ink;
-      ctx.globalAlpha = 0.14;
-      ctx.fillRect(x0, 1, x1 - x0, height - 2);
+      const box = new Path2D();
+      box.roundRect(x0, 2, x1 - x0, height - 4, 4);
+      ctx.fillStyle = accent;
+      ctx.globalAlpha = 0.16;
+      ctx.fill(box);
       ctx.globalAlpha = 1;
       ctx.lineWidth = 2;
-      ctx.strokeStyle = ink;
-      ctx.strokeRect(x0, 1, x1 - x0, height - 2);
+      ctx.strokeStyle = accent;
+      ctx.stroke(box);
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(draw);
     };
-    let themeTimer = 0;
-    let lastTheme = store.theme;
+    // Cada cambio (vista o modo claro/oscuro) repinta en el siguiente fotograma, cuando
+    // data-theme ya está aplicado.
     const update = () => {
       schedule();
-      // Tras un cambio de estilo, repintar al terminar la transición de colores.
-      if (store.theme !== lastTheme) {
-        lastTheme = store.theme;
-        window.clearTimeout(themeTimer);
-        themeTimer = window.setTimeout(schedule, 650);
-      }
       setLabel(formatInstant(centerTime(store.view), visibleYears(store.view)));
       setPercent(Math.round(minimapX(centerTime(store.view), 100)));
     };
@@ -150,7 +148,6 @@ export function Minimap({ store }: Props) {
     observer.observe(canvas);
     return () => {
       cancelAnimationFrame(frame);
-      window.clearTimeout(themeTimer);
       unsubscribe();
       observer.disconnect();
       canvas.removeEventListener('pointerdown', onDown);

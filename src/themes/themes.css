@@ -1,165 +1,35 @@
 /*
- * Estilos por periodo. Los valores de cada estilo están en bloques :root[data-period='…'],
- * generados desde src/themes/periods.ts (ver themeController.ts). Aquí: interpolación,
- * tipografías y adornos.
+ * Estilo único, cálido y editorial (decisión del 11/11/2026). Los colores de cada modo están
+ * en bloques :root[data-theme='light' | 'dark'], generados desde src/themes/theme.ts.
  */
 
-/* Variables de color registradas para que el navegador pueda interpolarlas. */
-@property --bg {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #fafaf7;
-}
-@property --surface {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #ffffff;
-}
-@property --ink {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #111418;
-}
-@property --muted {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #464a4d;
-}
-@property --accent {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #e4572e;
-}
-@property --accent-text {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #111418;
-}
-@property --line {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #cfcfd0;
-}
-@property --grid {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #e3e3e2;
-}
-@property --lane-alt {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #f1f1ee;
-}
-@property --hover {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #eeeeee;
-}
-@property --ornament {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #e4572e;
-}
-@property --ornament-2 {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #111418;
-}
-@property --danger {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #b3261e;
-}
-
-/* Al cruzar un límite, los colores se interpolan en 600 ms. */
 :root {
-  transition:
-    --bg 600ms ease,
-    --surface 600ms ease,
-    --ink 600ms ease,
-    --muted 600ms ease,
-    --accent 600ms ease,
-    --accent-text 600ms ease,
-    --line 600ms ease,
-    --grid 600ms ease,
-    --lane-alt 600ms ease,
-    --hover 600ms ease,
-    --ornament 600ms ease,
-    --ornament-2 600ms ease,
-    --danger 600ms ease;
+  --font-sans: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --shadow: 0 1px 2px rgb(40 30 20 / 5%), 0 4px 14px rgb(40 30 20 / 4%);
+  --shadow-lg: 0 16px 48px rgb(40 30 20 / 18%);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    transition: none;
-  }
+:root[data-theme='dark'] {
+  --shadow: 0 1px 2px rgb(0 0 0 / 35%);
+  --shadow-lg: 0 16px 48px rgb(0 0 0 / 50%);
 }
 
-/* Tipografía de lectura fija y tipografía de títulos según el estilo. */
 body {
-  font-family: 'Source Sans 3', system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 
+/* Títulos y ficha con la serif, como los textos largos de Claude. */
 .title,
 .panel-title,
-.filters-title {
-  font-family: var(--title-font), 'Source Sans 3', serif;
-  font-weight: 700;
-}
-
-/* Superficies con la textura del periodo. */
-.header,
-.panel,
-.filters {
-  background-color: var(--surface);
-  background-image: var(--texture, none);
-}
-
-/* Banda de adorno bajo la cabecera. */
-.header {
-  position: relative;
-}
-
-.header::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 1px;
-  background: var(--line);
-  pointer-events: none;
-}
-
-/* Prehistoria: trazo de carbón irregular. */
-:root[data-period='prehistory'] .header::after {
-  height: 6px;
-  bottom: -5px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='6'%3E%3Cpath d='M0 3 Q15 1 30 3.5 T60 2.5 T90 4 T120 3' stroke='%232A1E16' stroke-width='2.2' fill='none' stroke-linecap='round' opacity='0.85'/%3E%3C/svg%3E")
-    repeat-x;
-}
-
-/* Antigüedad: friso geométrico en oro. */
-:root[data-period='antiquity'] .header::after {
-  height: 8px;
-  bottom: -8px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='8'%3E%3Crect width='20' height='8' fill='%23C8A04A'/%3E%3Cpath d='M0 8 L5 2 L10 8 M10 8 L15 2 L20 8' stroke='%231F6F8B' stroke-width='1.2' fill='none'/%3E%3C/svg%3E")
-    repeat-x;
-}
-
-/* Edad Media: oro y ultramar. */
-:root[data-period='medieval'] .header::after {
-  height: 6px;
-  bottom: -6px;
-  background: linear-gradient(180deg, #b8902f 0 2px, transparent 2px 4px, #1f3a7a 4px 6px);
-}
-
-/* Capitular en la ficha. */
-:root[data-period='medieval'] .panel-title::first-letter {
-  float: left;
-  margin: 2px 6px 0 0;
-  font-family: 'UnifrakturCook', var(--title-font), serif;
-  font-size: 2.6em;
-  line-height: 0.8;
-  color: var(--ornament-2);
+.filters-title,
+.quiz-title,
+.with-title,
+.quiz-event,
+.quiz-final,
+.status strong {
+  font-family: var(--font-serif);
 }

@@ -20,7 +20,7 @@ import {
 } from '../features/quiz';
 import { compileFilter } from '../state/filters';
 import type { Store } from '../state/store';
-import { PERIODS, type PeriodId } from '../themes/periods';
+import { ERAS } from '../timeline/eras';
 import type { PreparedEvents } from '../timeline/prepare';
 import { trapTab } from './focus';
 
@@ -38,10 +38,9 @@ const MODES: { mode: QuizMode; label: string; hint: string }[] = [
   { mode: 'century', label: '¿Qué siglo?', hint: 'Elige el siglo (o milenio) de un evento.' },
 ];
 
-const ERAS: { value: EraChoice; label: string }[] = [
+const ERA_OPTIONS: { value: EraChoice; label: string }[] = [
   { value: 'all', label: 'Toda la historia' },
-  // PERIODS solo contiene las 4 eras (los estilos neutros están aparte).
-  ...PERIODS.map((p) => ({ value: p.id as PeriodId, label: p.name })),
+  ...ERAS.map((e) => ({ value: e.id, label: e.name })),
 ];
 
 const MODE_NAMES: Record<QuizMode, string> = { order: 'Ordena', century: '¿Qué siglo?' };
@@ -206,7 +205,7 @@ export function Quiz({ store, file, data, onClose }: Props) {
         <label class="quiz-field">
           <span>Periodo</span>
           <select value={era} onChange={(e) => setEra(e.currentTarget.value as EraChoice)}>
-            {ERAS.map((x) => (
+            {ERA_OPTIONS.map((x) => (
               <option key={x.value} value={x.value}>
                 {x.label}
               </option>

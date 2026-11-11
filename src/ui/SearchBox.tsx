@@ -34,8 +34,17 @@ export function SearchBox({ store, index, file, undated, data }: Props) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey && !isTyping(e.target)) {
         e.preventDefault();
-        inputRef.current?.focus();
-        inputRef.current?.select();
+        const focus = () => {
+          inputRef.current?.focus();
+          inputRef.current?.select();
+        };
+        // Con la barra lateral plegada, el buscador está oculto: primero se despliega.
+        if (store.sidebarCollapsed && window.matchMedia('(min-width: 768px)').matches) {
+          store.setSidebarCollapsed(false);
+          setTimeout(focus, 0);
+        } else {
+          focus();
+        }
       }
     };
     window.addEventListener('keydown', onKey);

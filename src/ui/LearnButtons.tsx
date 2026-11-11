@@ -6,20 +6,23 @@ import type { Store } from '../state/store';
 import { viewForEvent } from '../timeline/focus';
 import type { PreparedEvents } from '../timeline/prepare';
 import { fullView } from '../timeline/scale';
+import { IconDice, IconQuiz } from './icons';
 import { Quiz } from './Quiz';
 
 interface Props {
   store: Store;
-  file: DataFile;
-  data: PreparedEvents;
+  /** null mientras cargan los datos: los botones se ven, desactivados. */
+  file: DataFile | null;
+  data: PreparedEvents | null;
 }
 
-/** Botones de «Aprender jugando» en la cabecera: Sorpréndeme (F12) y Quiz (F13). */
+/** Acciones de «Aprender jugando» en la barra lateral: Sorpréndeme (F12) y Quiz (F13). */
 export function LearnButtons({ store, file, data }: Props) {
   const [quizOpen, setQuizOpen] = useState(false);
   const quizButton = useRef<HTMLButtonElement>(null);
 
   const surprise = () => {
+    if (!data) return;
     const filter = compileFilter(store.filters, data);
     const current = store.selection?.kind === 'event' ? store.selection.index : -1;
     const i = randomEvent(data.count, filter, Math.random, current);
@@ -43,19 +46,31 @@ export function LearnButtons({ store, file, data }: Props) {
 
   return (
     <>
-      <button type="button" class="filters-button learn-button" onClick={surprise}>
-        Sorpréndeme
+      <button
+        type="button"
+        class="nav-item learn-button"
+        title="Sorpréndeme: un evento al azar"
+        disabled={!data}
+        onClick={surprise}
+      >
+        <IconDice />
+        <span class="nav-label">Sorpréndeme</span>
       </button>
       <button
         type="button"
-        class="filters-button learn-button"
+        class="nav-item learn-button"
+        title="Quiz cronológico"
         ref={quizButton}
         aria-haspopup="dialog"
+        disabled={!data}
         onClick={() => setQuizOpen(true)}
       >
-        Quiz
+        <IconQuiz />
+        <span class="nav-label">Quiz</span>
       </button>
-      {quizOpen && <Quiz store={store} file={file} data={data} onClose={closeQuiz} />}
+      {quizOpen && file && data && (
+        <Quiz store={store} file={file} data={data} onClose={closeQuiz} />
+      )}
     </>
   );
 }

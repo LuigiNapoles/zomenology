@@ -1,5 +1,5 @@
 import { clampView, type View } from '../timeline/scale';
-import type { StyleChoice } from '../themes/periods';
+import { THEME_MODES, type ThemeMode } from '../themes/theme';
 import { sanitizeFilters, type Filters } from './filters';
 
 /** Enlace directo a un evento: «#e42». Devuelve el id o null. */
@@ -17,10 +17,17 @@ const STORAGE_KEY = 'cronologia:v1';
 export interface SavedState {
   view: View | null;
   filters: Filters | null;
-  style: StyleChoice | null;
+  theme: ThemeMode | null;
+  sidebarCollapsed: boolean | null;
 }
 
-const STYLES: readonly StyleChoice[] = ['period', 'neutral-light', 'neutral-dark'];
+/** Modo guardado; los valores de los antiguos estilos por periodo se traducen al nuevo. */
+function sanitizeTheme(value: unknown): ThemeMode | null {
+  if (THEME_MODES.includes(value as ThemeMode)) return value as ThemeMode;
+  if (value === 'neutral-dark') return 'dark';
+  if (value === 'period' || value === 'neutral-light') return 'light';
+  return null;
+}
 
 function sanitizeView(value: unknown): View | null {
   if (typeof value !== 'object' || value === null) return null;
@@ -31,24 +38,34 @@ function sanitizeView(value: unknown): View | null {
   return clampView({ mode: v.mode, center: v.center, span: v.span });
 }
 
+const EMPTY: SavedState = { view: null, filters: null, theme: null, sidebarCollapsed: null };
+
 /** Lee la vista y los filtros guardados. Si no hay o están dañados, devuelve null en cada parte. */
 export function loadSaved(storage: Pick<Storage, 'getItem'> | null = safeStorage()): SavedState {
   try {
     const raw = storage?.getItem(STORAGE_KEY);
-    if (!raw) return { view: null, filters: null, style: null };
-    const parsed = JSON.parse(raw) as { view?: unknown; filters?: unknown; style?: unknown };
+    if (!raw) return EMPTY;
+    const parsed = JSON.parse(raw) as {
+      view?: unknown;
+      filters?: unknown;
+      theme?: unknown;
+      style?: unknown;
+      sidebarCollapsed?: unknown;
+    };
     return {
       view: sanitizeView(parsed.view),
       filters: parsed.filters === undefined ? null : sanitizeFilters(parsed.filters),
-      style: STYLES.includes(parsed.style as StyleChoice) ? (parsed.style as StyleChoice) : null,
+      theme: sanitizeTheme(parsed.theme ?? parsed.style),
+      sidebarCollapsed:
+        typeof parsed.sidebarCollapsed === 'boolean' ? parsed.sidebarCollapsed : null,
     };
   } catch {
-    return { view: null, filters: null, style: null };
+    return EMPTY;
   }
 }
 
 export function save(
-  state: { view: View; filters: Filters; style: StyleChoice },
+  state: { view: View; filters: Filters; theme: ThemeMode; sidebarCollapsed: boolean },
   storage: Pick<Storage, 'setItem'> | null = safeStorage(),
 ): void {
   try {

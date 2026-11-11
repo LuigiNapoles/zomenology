@@ -20,13 +20,10 @@ UA = (
 )
 
 # Familia → parámetro de pesos para la API css2 de Google Fonts.
+# Interfaz y eje: Source Sans 3. Títulos y ficha: Source Serif 4 (estilo editorial, cálido).
 FAMILIES = {
     "Source Sans 3": "wght@400..700",
-    "Caveat Brush": "",
-    "Marcellus": "",
-    "Cormorant Garamond": "wght@500..700",
-    "UnifrakturCook": "wght@700",
-    "Archivo": "wght@500..700",
+    "Source Serif 4": "wght@400..700",
 }
 
 

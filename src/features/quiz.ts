@@ -1,6 +1,6 @@
 import type { TimelineEvent } from '../data/types';
 import { toRoman } from '../format/dates';
-import { PERIODS, type PeriodId } from '../themes/periods';
+import { ERAS, type EraId } from '../timeline/eras';
 import type { PreparedEvents } from '../timeline/prepare';
 import { randomInt, shuffle, type Random } from './random';
 
@@ -12,7 +12,7 @@ import { randomInt, shuffle, type Random } from './random';
  */
 
 export type QuizMode = 'order' | 'century';
-export type EraChoice = 'all' | PeriodId;
+export type EraChoice = 'all' | EraId;
 
 export const ROUND_SIZE = 10;
 export const ORDER_SIZE = 4;
@@ -27,8 +27,8 @@ const MILLENNIUM_RANGE = [-10, -2] as const;
 /** Años [desde, hasta) de cada opción de dificultad por periodo. */
 export function eraRange(era: EraChoice): [number, number] {
   if (era === 'all') return [-Infinity, Infinity];
-  const i = PERIODS.findIndex((p) => p.id === era);
-  return [PERIODS[i]?.from ?? -Infinity, PERIODS[i + 1]?.from ?? Infinity];
+  const i = ERAS.findIndex((e) => e.id === era);
+  return [ERAS[i]?.from ?? -Infinity, ERAS[i + 1]?.from ?? Infinity];
 }
 
 export interface Bucket {

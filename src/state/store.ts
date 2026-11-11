@@ -1,7 +1,6 @@
-import { activeTheme, type StyleChoice, type ThemeId } from '../themes/periods';
+import type { ThemeMode } from '../themes/theme';
 import { DEFAULT_FILTERS, type Filters } from './filters';
 import {
-  centerTime,
   clampView,
   fullView,
   lerpView,
@@ -43,10 +42,10 @@ export class Store {
   view: View;
   selection: Selection = null;
   filters: Filters = DEFAULT_FILTERS;
-  /** Selector de estilo: por periodo, neutro claro u oscuro. */
-  style: StyleChoice = 'period';
-  /** Estilo activo, derivado del selector y de la fecha del centro. */
-  theme: ThemeId = 'contemporary';
+  /** Modo claro u oscuro. */
+  theme: ThemeMode = 'light';
+  /** Barra lateral plegada (solo iconos). */
+  sidebarCollapsed = false;
   /** Ancho del eje en píxeles CSS. */
   width = 1;
   private listeners = new Set<Listener>();
@@ -55,16 +54,22 @@ export class Store {
   constructor(
     view: View = fullView('log'),
     filters: Filters = DEFAULT_FILTERS,
-    style: StyleChoice = 'period',
+    theme: ThemeMode = 'light',
+    sidebarCollapsed = false,
   ) {
     this.view = view;
     this.filters = filters;
-    this.style = style;
-    this.theme = activeTheme(style, centerTime(view)).id;
+    this.theme = theme;
+    this.sidebarCollapsed = sidebarCollapsed;
   }
 
-  setStyle(style: StyleChoice): void {
-    this.style = style;
+  setTheme(theme: ThemeMode): void {
+    this.theme = theme;
+    this.emit();
+  }
+
+  setSidebarCollapsed(collapsed: boolean): void {
+    this.sidebarCollapsed = collapsed;
     this.emit();
   }
 
@@ -79,7 +84,6 @@ export class Store {
   }
 
   private emit(): void {
-    this.theme = activeTheme(this.style, centerTime(this.view)).id;
     for (const listener of this.listeners) listener();
   }
 

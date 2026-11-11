@@ -1,7 +1,3 @@
 Tipografías de Google Fonts bajo la SIL Open Font License 1.1 (https://openfontlicense.org):
 - Source Sans 3
-- Caveat Brush
-- Marcellus
-- Cormorant Garamond
-- UnifrakturCook
-- Archivo
+- Source Serif 4

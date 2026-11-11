@@ -1,7 +1,6 @@
 import type { Selection } from '../state/store';
 import { parseColor, toCss, type RGB } from '../themes/color';
-import { macroPalette, themeById, type ThemeId } from '../themes/periods';
-import { loadTexture } from '../themes/textures';
+import { macroPalette, type ThemeMode } from '../themes/theme';
 import { bubbleLabel, bubbleWidth } from './cluster';
 import { INSIDE_PAD, LABEL_GAP, LANE_PADDING, ROW_HEIGHT, type PlacedItem } from './layout';
 import type { PreparedEvents } from './prepare';
@@ -26,11 +25,9 @@ export const AXIS_HEIGHT = 36;
 const RELAYOUT_DELAY_MS = 100;
 const FONT = '14px "Source Sans 3", system-ui, sans-serif';
 const BOLD_FONT = '600 14px "Source Sans 3", system-ui, sans-serif';
-/** Duración del cambio de estilo (la misma que la transición CSS). */
-const THEME_FADE_MS = 600;
-
-/** Colores del estilo activo, leídos de las variables CSS (interpoladas durante el cambio). */
+/** Colores del modo activo, leídos de las variables CSS. */
 interface CanvasTheme {
+  /** Fondo del lienzo: el de la tarjeta que lo contiene. */
   bg: string;
   surface: string;
   ink: string;
@@ -38,7 +35,8 @@ interface CanvasTheme {
   grid: string;
   laneAlt: string;
   line: string;
-  ornament: string;
+  /** Terracota: línea del centro. */
+  accent: string;
   /** Contorno del evento con el foco del teclado. */
   focus: string;
   strokes: string[];
@@ -49,8 +47,8 @@ function readTheme(): CanvasTheme {
   const style = getComputedStyle(document.documentElement);
   const get = (name: string, fallback: string): RGB =>
     parseColor(style.getPropertyValue(name)) ?? (parseColor(fallback) as RGB);
-  const bg = get('--bg', '#fafaf7');
   const surface = get('--surface', '#ffffff');
+  const bg = surface;
   const palette = macroPalette(bg, surface);
   return {
     bg: toCss(bg),
@@ -60,15 +58,11 @@ function readTheme(): CanvasTheme {
     grid: toCss(get('--grid', '#e6e6e6')),
     laneAlt: toCss(get('--lane-alt', '#f3f3f0')),
     line: toCss(get('--line', '#d0d0d0')),
-    ornament: toCss(get('--ornament', '#e4572e')),
+    accent: toCss(get('--accent', '#b05730')),
     focus: toCss(get('--accent-text', '#111418')),
     strokes: palette.stroke.map((c) => toCss(c)),
     fills: palette.fill.map((c) => toCss(c)),
   };
-}
-
-function prefersReducedMotion(): boolean {
-  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 /** Lo que hay bajo el puntero. */
@@ -166,11 +160,8 @@ export class TimelineRenderer {
   private charWidths: CharWidths;
   private laneSignature = '';
   private selection: Selection = null;
-  private themeId: ThemeId | null = null;
-  private previousThemeId: ThemeId | null = null;
-  private themeChangedAt = -Infinity;
+  private themeId: ThemeMode | null = null;
   private theme: CanvasTheme | null = null;
-  private patterns = new Map<ThemeId, CanvasPattern | null>();
   private filter: ((i: number) => boolean) | null = null;
   private focus: Target | null = null;
 
@@ -229,14 +220,11 @@ export class TimelineRenderer {
     this.requestDraw();
   }
 
-  /** Cambia de estilo: los colores se interpolan (CSS) y la textura se funde en 600 ms. */
-  setTheme(id: ThemeId): void {
-    if (id === this.themeId) return;
-    this.previousThemeId = this.themeId;
-    this.themeId = id;
-    this.themeChangedAt = prefersReducedMotion() ? -Infinity : performance.now();
+  /** Cambia entre modo claro y oscuro: se vuelven a leer los colores. */
+  setTheme(mode: ThemeMode): void {
+    if (mode === this.themeId) return;
+    this.themeId = mode;
     this.theme = null;
-    this.ensurePattern(id);
     this.requestDraw();
   }
 
@@ -249,60 +237,11 @@ export class TimelineRenderer {
     this.requestDraw();
   }
 
-  private ensurePattern(id: ThemeId): void {
-    if (this.patterns.has(id)) return;
-    const texture = themeById(id).texture;
-    this.patterns.set(id, null);
-    if (!texture || id.startsWith('neutral')) return;
-    void loadTexture(texture)
-      .then((canvas) => {
-        this.patterns.set(id, this.ctx.createPattern(canvas, 'repeat'));
-        this.requestDraw();
-      })
-      .catch(() => undefined);
-  }
-
-  /** Textura de fondo del estilo. */
-  private drawTexture(id: ThemeId | null, alpha: number, w: number, h: number): void {
-    if (!id || alpha <= 0) return;
-    const pattern = this.patterns.get(id);
-    if (!pattern) return;
-    const { ctx } = this;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = pattern;
-    ctx.fillRect(0, 0, w, h);
-    ctx.globalAlpha = 1;
-  }
-
-  /** Separador entre carriles según el periodo. */
-  private drawSeparator(y: number, w: number, lane: number): void {
-    const { ctx } = this;
+  /** Separador fino entre carriles. */
+  private drawSeparator(y: number, w: number): void {
     const theme = this.theme as CanvasTheme;
-    switch (this.themeId) {
-      case 'prehistory': {
-        // Trazo de carbón irregular.
-        ctx.strokeStyle = theme.ink;
-        ctx.globalAlpha = 0.55;
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        for (let x = 0; x <= w + 12; x += 12) {
-          const jitter = Math.sin(x * 0.07 + lane * 1.7) * 1.2 + Math.sin(x * 0.23 + lane) * 0.6;
-          if (x === 0) ctx.moveTo(x, y + jitter);
-          else ctx.lineTo(x, y + jitter);
-        }
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-        return;
-      }
-      case 'antiquity':
-      case 'medieval':
-        ctx.fillStyle = theme.ornament;
-        ctx.fillRect(0, y - 1, w, 1);
-        return;
-      default:
-        ctx.fillStyle = theme.line;
-        ctx.fillRect(0, y - 1, w, 1);
-    }
+    this.ctx.fillStyle = theme.line;
+    this.ctx.fillRect(0, y - 1, w, 1);
   }
 
   setSelection(selection: Selection): void {
@@ -447,17 +386,13 @@ export class TimelineRenderer {
     const t0 = performance.now();
     const { ctx, cssWidth: w, cssHeight: h } = this;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    // Durante el cambio de estilo se leen los colores interpolados en cada fotograma.
-    const fade = Math.min(1, (t0 - this.themeChangedAt) / THEME_FADE_MS);
-    if (!this.theme || fade < 1) this.theme = readTheme();
+    if (!this.theme) this.theme = readTheme();
     const theme = this.theme;
     const laneBottom = h - AXIS_HEIGHT;
     const left = view.center - view.span / 2;
     const k = w / view.span;
     ctx.fillStyle = theme.bg;
     ctx.fillRect(0, 0, w, h);
-    this.drawTexture(this.previousThemeId, 1 - fade, w, laneBottom);
-    this.drawTexture(this.themeId, fade, w, laneBottom);
 
     let m = this.mark('clear', t0);
     const layout = this.ensureLayout(view, w, laneBottom);
@@ -472,7 +407,7 @@ export class TimelineRenderer {
         ctx.fillRect(0, lane.top, w, lane.height);
         ctx.globalAlpha = 1;
       }
-      this.drawSeparator(lane.top + lane.height, w, lane.lane);
+      this.drawSeparator(lane.top + lane.height, w);
     });
 
     // Rejilla
@@ -498,8 +433,6 @@ export class TimelineRenderer {
 
     this.drawCenter(view, ticks, w, laneBottom);
     this.mark('axis', m);
-    // Mientras dura el cambio de estilo, se sigue pintando cada fotograma.
-    if (fade < 1) this.requestDraw();
     this.lastDrawMs = performance.now() - t0;
     this.onDraw?.(this.lastDrawMs);
   }
@@ -513,8 +446,7 @@ export class TimelineRenderer {
     const theme = this.theme as CanvasTheme;
     const x = Math.round(w / 2) + 0.5;
     ctx.save();
-    ctx.strokeStyle = theme.ink;
-    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = theme.accent;
     ctx.lineWidth = 1.5;
     ctx.setLineDash([6, 4]);
     ctx.beginPath();
@@ -533,8 +465,8 @@ export class TimelineRenderer {
     pill.roundRect(x - width / 2, top, width, 22, 11);
     ctx.fillStyle = theme.surface;
     ctx.fill(pill);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = theme.ink;
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = theme.accent;
     ctx.stroke(pill);
     ctx.fillStyle = theme.ink;
     ctx.textAlign = 'center';

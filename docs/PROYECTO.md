@@ -234,6 +234,8 @@ La v1 incluye 14 funcionalidades en cuatro bloques; las marcadas como (v2) queda
 
 ## Diseño visual por periodos
 
+> **Decisión posterior del 11/11/2026 (sustituye a todo este apartado):** se descartan los estilos por periodo. La web tiene un único estilo inspirado en la web de Claude: fondo crema cálido (`#FAF9F5`), tarjetas blancas redondeadas con borde fino, acento terracota, títulos y ficha en Source Serif 4 e interfaz y eje en Source Sans 3. Hay modo **claro** y **oscuro** (sin automático), que se elige en la barra lateral y se recuerda. La pantalla se organiza con una **barra lateral plegable** (buscador, Filtros, Sorpréndeme, Quiz y modo), una barra sobre el eje (centro, era, escala y zoom), el eje y el minimapa en tarjetas, y la ficha como panel a la derecha; en móvil la barra lateral pasa a barra superior con menú. Las 4 eras siguen solo como información (línea de estado, minimapa y dificultad del quiz). Los criterios de la Fase 5 sobre periodos quedan sustituidos por: contraste AA comprobado en los dos modos (tests y Lighthouse).
+
 La web cambia de piel según la fecha que hay en el centro de la pantalla: 10 estilos, del cosmos estrellado al museo moderno.
 
 > **Decisión del 11/11/2026 (sustituye a la tabla «Los 10 estilos»):** para que la página no parpadee tanto, los estilos se reducen a 4 grandes eras, cada una con la paleta, tipografía, textura y adornos de uno de los estilos originales:

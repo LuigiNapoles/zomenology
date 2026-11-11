@@ -86,18 +86,29 @@ describe('enlaces y guardado', () => {
     };
     const view = viewAround(1500, 100, 'linear');
     const filters = { ...DEFAULT_FILTERS, exactOnly: true, from: '1400' };
-    save({ view, filters, style: 'neutral-dark' }, storage);
+    save({ view, filters, theme: 'dark', sidebarCollapsed: true }, storage);
     const back = loadSaved(storage);
     expect(back.view).toEqual(view);
     expect(back.filters).toEqual(filters);
-    expect(back.style).toBe('neutral-dark');
+    expect(back.theme).toBe('dark');
+    expect(back.sidebarCollapsed).toBe(true);
   });
 
   it('ignora datos guardados dañados', () => {
     const broken = { getItem: () => '{no es json' };
-    expect(loadSaved(broken)).toEqual({ view: null, filters: null, style: null });
+    expect(loadSaved(broken)).toEqual({
+      view: null,
+      filters: null,
+      theme: null,
+      sidebarCollapsed: null,
+    });
     const weird = { getItem: () => JSON.stringify({ view: { mode: 'x', center: 1, span: 1 } }) };
     expect(loadSaved(weird).view).toBeNull();
-    expect(loadSaved(null)).toEqual({ view: null, filters: null, style: null });
+    expect(loadSaved(null)).toEqual({
+      view: null,
+      filters: null,
+      theme: null,
+      sidebarCollapsed: null,
+    });
   });
 });

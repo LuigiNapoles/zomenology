@@ -23,11 +23,13 @@ import { warmUp } from './timeline/textWidth';
 import { fullView, viewAround, type ScaleMode, type View } from './timeline/scale';
 import { EventPanel, focusEvent } from './ui/EventPanel';
 import { FiltersPanel } from './ui/FiltersPanel';
-import { Header } from './ui/Header';
+import { IconFilter } from './ui/icons';
 import { LearnButtons } from './ui/LearnButtons';
 import { Minimap } from './ui/Minimap';
 import { SearchBox } from './ui/SearchBox';
+import { Sidebar } from './ui/Sidebar';
 import { TimelineView } from './ui/TimelineView';
+import { Toolbar } from './ui/Toolbar';
 import { focusTimeline } from './ui/focus';
 import './themes/fonts.css';
 import './ui/app.css';
@@ -52,18 +54,16 @@ const saved = loadSaved();
 const store = new Store(
   dev.view ?? saved.view ?? fullView('log'),
   saved.filters ?? DEFAULT_FILTERS,
-  saved.style ?? 'period',
+  saved.theme ?? 'light',
+  saved.sidebarCollapsed ?? false,
 );
 
-// Estilo por periodo: variables CSS de cada estilo y el activo según el centro de la vista.
+// Modo claro u oscuro: variables CSS de cada modo y el activo.
 installThemes();
 applyTheme(store.theme);
 store.subscribe(() => applyTheme(store.theme));
 
-/**
- * El eje dibuja con «Source Sans 3»: cuando carga hay que volver a medir las etiquetas.
- * Las demás tipografías (las de cada era) no afectan al eje.
- */
+/** El eje dibuja con «Source Sans 3»: cuando carga hay que volver a medir las etiquetas. */
 let currentRenderer: TimelineRenderer | null = null;
 if ('fonts' in document) {
   void document.fonts.load('14px "Source Sans 3"').then(() => currentRenderer?.fontsChanged());
@@ -114,6 +114,12 @@ function syncHash(ds: Dataset): void {
   if (location.hash !== hash && !(hash === '' && location.hash === '')) {
     history.replaceState(null, '', `${location.pathname}${location.search}${hash}`);
   }
+}
+
+function useCollapsed(): boolean {
+  const [collapsed, setCollapsed] = useState(store.sidebarCollapsed);
+  useEffect(() => store.subscribe(() => setCollapsed(store.sidebarCollapsed)), []);
+  return collapsed;
 }
 
 function useFilters(): Filters {
@@ -177,7 +183,13 @@ function App() {
 
     let saveTimer = 0;
     let lastSelection = store.selection;
-    const persist = () => save({ view: store.view, filters: store.filters, style: store.style });
+    const persist = () =>
+      save({
+        view: store.view,
+        filters: store.filters,
+        theme: store.theme,
+        sidebarCollapsed: store.sidebarCollapsed,
+      });
     const unsubscribe = store.subscribe(() => {
       if (store.selection !== lastSelection) {
         lastSelection = store.selection;
@@ -224,85 +236,85 @@ function App() {
   );
 
   const active = !isDefaultFilters(filters);
+  const collapsed = useCollapsed();
+
+  // Antes de cargar se pintan los mismos huecos (buscador y botones desactivados):
+  // así la página no cambia de tamaño al llegar los datos.
+  const search = dataset ? (
+    <SearchBox
+      store={store}
+      index={index}
+      file={dataset.file}
+      undated={dataset.undated}
+      data={dataset.events}
+    />
+  ) : (
+    <div class="search">
+      <input class="search-input" type="search" placeholder="Cargando eventos…" disabled />
+    </div>
+  );
+
+  const actions = (
+    <>
+      <button
+        type="button"
+        class={active ? 'nav-item active' : 'nav-item'}
+        aria-expanded={filtersOpen}
+        title="Filtros"
+        disabled={!dataset}
+        onClick={() => setFiltersOpen(!filtersOpen)}
+      >
+        <IconFilter />
+        <span class="nav-label">Filtros</span>
+        {active && <span class="nav-badge">{formatNumber(visible, 0)}</span>}
+      </button>
+      {LEARN && (
+        <LearnButtons store={store} file={dataset?.file ?? null} data={dataset?.events ?? null} />
+      )}
+    </>
+  );
 
   return (
-    <div class="app">
+    <div class={collapsed ? 'app sidebar-collapsed' : 'app'}>
       <button type="button" class="skip-link" onClick={focusTimeline}>
         Saltar a los eventos del eje
       </button>
-      <Header store={store}>
-        {!dataset && (
-          // Mismo hueco que tendrán el buscador y los botones: la cabecera no cambia de tamaño al cargar.
-          <>
-            <div class="search">
-              <input class="search-input" type="search" placeholder="Cargando eventos…" disabled />
-            </div>
-            <button type="button" class="filters-button" disabled>
-              Filtros
-            </button>
-            {LEARN && (
-              <>
-                <button type="button" class="filters-button learn-button" disabled>
-                  Sorpréndeme
-                </button>
-                <button type="button" class="filters-button learn-button" disabled>
-                  Quiz
-                </button>
-              </>
-            )}
-          </>
+      <Sidebar store={store} search={search} actions={actions} />
+      <main class="workspace">
+        {dataset && filtersOpen && (
+          <FiltersPanel
+            store={store}
+            file={dataset.file}
+            visible={visible}
+            total={dataset.events.count}
+            onClose={() => setFiltersOpen(false)}
+          />
         )}
-        {dataset && (
-          <>
-            <SearchBox
-              store={store}
-              index={index}
-              file={dataset.file}
-              undated={dataset.undated}
-              data={dataset.events}
-            />
-            <button
-              type="button"
-              class={active ? 'filters-button active' : 'filters-button'}
-              aria-expanded={filtersOpen}
-              onClick={() => setFiltersOpen(!filtersOpen)}
-            >
-              Filtros{active ? ` · ${formatNumber(visible, 0)}` : ''}
-            </button>
-            {LEARN && <LearnButtons store={store} file={dataset.file} data={dataset.events} />}
-          </>
-        )}
-      </Header>
-      <main class="main">
-        {error && <p class="message">Error: {error}</p>}
-        {!error && !dataset && <p class="message">Cargando eventos…</p>}
-        {dataset && (
-          <>
-            {filtersOpen && (
-              <FiltersPanel
+        <div class="center">
+          <Toolbar store={store} />
+          <div class="timeline-card">
+            {error && <p class="message">Error: {error}</p>}
+            {!error && !dataset && <p class="message">Cargando eventos…</p>}
+            {dataset && (
+              <TimelineView
                 store={store}
-                file={dataset.file}
-                visible={visible}
-                total={dataset.events.count}
-                onClose={() => setFiltersOpen(false)}
+                events={dataset.events}
+                macros={dataset.file.macros}
+                onRenderer={onRenderer}
               />
             )}
-            <TimelineView
-              store={store}
-              events={dataset.events}
-              macros={dataset.file.macros}
-              onRenderer={onRenderer}
-            />
-            <EventPanel
-              store={store}
-              file={dataset.file}
-              undated={dataset.undated}
-              data={dataset.events}
-            />
-          </>
+          </div>
+          <Minimap store={store} />
+        </div>
+        {dataset && (
+          <EventPanel
+            store={store}
+            file={dataset.file}
+            undated={dataset.undated}
+            data={dataset.events}
+          />
         )}
       </main>
-      <Minimap store={store} />
     </div>
   );
 }

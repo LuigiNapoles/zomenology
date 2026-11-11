@@ -9,7 +9,7 @@ import {
   windowRect,
 } from '../src/timeline/minimap';
 import { centerTime, fullView, viewAround, visibleYears } from '../src/timeline/scale';
-import { periodAt } from '../src/themes/periods';
+import { eraAt as periodAt } from '../src/timeline/eras';
 
 const W = 1000;
 
