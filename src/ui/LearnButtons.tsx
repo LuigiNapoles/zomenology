@@ -43,12 +43,12 @@ export function LearnButtons({ store, file, data }: Props) {
 
   return (
     <>
-      <button type="button" class="filters-button" onClick={surprise}>
+      <button type="button" class="filters-button learn-button" onClick={surprise}>
         Sorpréndeme
       </button>
       <button
         type="button"
-        class="filters-button"
+        class="filters-button learn-button"
         ref={quizButton}
         aria-haspopup="dialog"
         onClick={() => setQuizOpen(true)}

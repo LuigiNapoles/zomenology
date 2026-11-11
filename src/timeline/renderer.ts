@@ -7,6 +7,7 @@ import { INSIDE_PAD, LABEL_GAP, LANE_PADDING, ROW_HEIGHT, type PlacedItem } from
 import type { PreparedEvents } from './prepare';
 import { formatInstant } from '../format/dates';
 import { centerTime, visibleYears, type ScaleMode, type View } from './scale';
+import { CharWidths } from './textWidth';
 import { computeTicks, type Tick } from './ticks';
 import {
   BAR_HEIGHT,
@@ -38,6 +39,8 @@ interface CanvasTheme {
   laneAlt: string;
   line: string;
   ornament: string;
+  /** Contorno del evento con el foco del teclado. */
+  focus: string;
   strokes: string[];
   fills: string[];
 }
@@ -58,6 +61,7 @@ function readTheme(): CanvasTheme {
     laneAlt: toCss(get('--lane-alt', '#f3f3f0')),
     line: toCss(get('--line', '#d0d0d0')),
     ornament: toCss(get('--ornament', '#e4572e')),
+    focus: toCss(get('--accent-text', '#111418')),
     strokes: palette.stroke.map((c) => toCss(c)),
     fills: palette.fill.map((c) => toCss(c)),
   };
@@ -69,6 +73,29 @@ function prefersReducedMotion(): boolean {
 
 /** Lo que hay bajo el puntero. */
 export type Hit = { kind: 'event'; index: number } | { kind: 'bubble'; members: number[] } | null;
+
+/** Elemento del eje que se puede recorrer con el teclado (evento o burbuja «+N»). */
+export type Target = { kind: 'event'; index: number } | { kind: 'bubble'; members: number[] };
+
+/** Elemento visible, con su posición en pantalla, para la lista accesible. */
+export type VisibleTarget = Target & { x: number; lane: number };
+
+/** Máximo de elementos en la lista accesible del eje. */
+export const MAX_TARGETS = 200;
+
+/** Los `limit` más cercanos al centro, en orden de izquierda a derecha (y de carril). */
+export function pickTargets(
+  targets: VisibleTarget[],
+  width: number,
+  limit = MAX_TARGETS,
+): VisibleTarget[] {
+  let list = targets;
+  if (list.length > limit) {
+    list = [...list].sort((a, b) => Math.abs(a.x - width / 2) - Math.abs(b.x - width / 2));
+    list = list.slice(0, limit);
+  }
+  return [...list].sort((a, b) => a.x - b.x || a.lane - b.lane);
+}
 
 export interface LaneBox {
   lane: number;
@@ -104,6 +131,24 @@ interface Label {
   type: string | undefined;
 }
 
+let sharedMeasurer: CanvasRenderingContext2D | null = null;
+let sharedWidths: CharWidths | null = null;
+
+/**
+ * Anchos de letra de las etiquetas, compartidos por todos los ejes: así se pueden medir antes
+ * de crear el eje (ver `warmUp`). Se miden en un canvas aparte con la tipografía fijada una
+ * sola vez, porque cambiar ctx.font antes de cada medida costaba más que medir.
+ */
+export function labelCharWidths(): CharWidths {
+  if (!sharedWidths) {
+    const measurer = document.createElement('canvas').getContext('2d');
+    if (measurer) measurer.font = FONT;
+    sharedMeasurer = measurer;
+    sharedWidths = new CharWidths((text) => measurer?.measureText(text).width ?? text.length * 7);
+  }
+  return sharedWidths;
+}
+
 /** Pinta los carriles en un canvas 2D. Solo repinta cuando algo cambia. */
 export class TimelineRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -118,6 +163,7 @@ export class TimelineRenderer {
   private settled = true;
   private settleTimer: ReturnType<typeof setTimeout> | undefined;
   private labelWidths: Float32Array;
+  private charWidths: CharWidths;
   private laneSignature = '';
   private selection: Selection = null;
   private themeId: ThemeId | null = null;
@@ -126,12 +172,15 @@ export class TimelineRenderer {
   private theme: CanvasTheme | null = null;
   private patterns = new Map<ThemeId, CanvasPattern | null>();
   private filter: ((i: number) => boolean) | null = null;
+  private focus: Target | null = null;
 
   /** Duración del último pintado, en ms. */
   lastDrawMs = 0;
   onDraw: ((ms: number) => void) | null = null;
   /** Se llama cuando cambian los carriles visibles (para la columna de nombres). */
   onLanes: ((lanes: LaneBox[]) => void) | null = null;
+  /** Se llama cada vez que se recoloca (para la lista accesible de eventos visibles). */
+  onLayout: (() => void) | null = null;
   /** Solo para medir (bench): tiempo acumulado por fase del pintado. */
   profile: Record<string, number> | null = null;
 
@@ -143,6 +192,7 @@ export class TimelineRenderer {
     if (!ctx) throw new Error('El navegador no permite dibujar en canvas 2D');
     this.ctx = ctx;
     this.labelWidths = new Float32Array(data.count).fill(Number.NaN);
+    this.charWidths = labelCharWidths();
   }
 
   private mark(name: string, since: number): number {
@@ -193,6 +243,8 @@ export class TimelineRenderer {
   /** Las tipografías han cargado: hay que volver a medir las etiquetas y recolocar. */
   fontsChanged(): void {
     this.labelWidths.fill(Number.NaN);
+    if (sharedMeasurer) sharedMeasurer.font = FONT;
+    this.charWidths.reset();
     this.layout = null;
     this.requestDraw();
   }
@@ -258,6 +310,46 @@ export class TimelineRenderer {
     this.requestDraw();
   }
 
+  /** Elemento con el foco del teclado (se rodea con un contorno), o null. */
+  setFocus(target: Target | null): void {
+    this.focus = target;
+    this.requestDraw();
+  }
+
+  /**
+   * Eventos y burbujas que se ven ahora en pantalla, como mucho MAX_TARGETS (los más cercanos
+   * al centro), de izquierda a derecha. Alimenta la lista accesible que recorre Tab.
+   */
+  visibleTargets(limit = MAX_TARGETS): VisibleTarget[] {
+    const layout = this.layout;
+    const view = this.view;
+    if (!layout || !view) return [];
+    const w = this.cssWidth;
+    const left = view.center - view.span / 2;
+    const k = w / view.span;
+    const coords = this.coordsFor(view.mode);
+    const out: VisibleTarget[] = [];
+    const addEvent = (index: number, lane: number) => {
+      const ext = markerExtent(this.data, coords, index, left, k);
+      if (ext.x1 < 0 || ext.x0 > w) return;
+      const x = ext.bar ? (Math.max(ext.x0, 0) + Math.min(ext.x1, w)) / 2 : ext.center;
+      out.push({ kind: 'event', index, x, lane });
+    };
+    for (const lane of layout.lanes) {
+      for (const row of lane.rowItems) for (const item of row) addEvent(item.index, lane.lane);
+      for (const b of lane.bubbles) {
+        if (b.single) {
+          addEvent(b.members[0] as number, lane.lane);
+          continue;
+        }
+        const x = (b.uCenter - left) * k;
+        if (x < 0 || x > w) continue;
+        out.push({ kind: 'bubble', members: b.members, x, lane: lane.lane });
+      }
+    }
+    return pickTargets(out, w, limit);
+  }
+
   requestDraw(): void {
     if (this.frame) return;
     this.frame = requestAnimationFrame(() => {
@@ -283,10 +375,9 @@ export class TimelineRenderer {
   private labelWidth = (i: number): number => {
     const cached = this.labelWidths[i] as number;
     if (!Number.isNaN(cached)) return cached;
-    this.ctx.font = FONT;
     const type = this.data.events[i]?.t;
     const icon = type && type !== 'e' ? ICON_WIDTH : 0;
-    const width = Math.ceil(this.ctx.measureText(this.data.labels[i] ?? '').width) + icon;
+    const width = this.charWidths.width(this.data.labels[i] ?? '') + icon;
     this.labelWidths[i] = width;
     return width;
   };
@@ -341,6 +432,7 @@ export class TimelineRenderer {
     });
     const layout: DrawLayout = { base, version: this.viewVersion, lanes };
     this.layout = layout;
+    this.onLayout?.();
     const signature = lanes.map((l) => `${l.lane}:${l.top}:${l.height}`).join('|');
     if (signature !== this.laneSignature) {
       this.laneSignature = signature;
@@ -486,6 +578,9 @@ export class TimelineRenderer {
     const fill = theme.fills[lane.lane] ?? theme.surface;
     const rowCenter = (r: number) => lane.top + LANE_PADDING + r * ROW_HEIGHT + ROW_HEIGHT / 2;
     const selected = this.selection?.kind === 'event' ? this.selection.index : -1;
+    const focusEvent = this.focus?.kind === 'event' ? this.focus.index : -1;
+    const focusBubble = this.focus?.kind === 'bubble' ? this.focus.members[0] : undefined;
+    let focusBox: { x0: number; x1: number; cy: number; h: number } | null = null;
 
     const bars = new Path2D();
     const approxBars = new Path2D();
@@ -527,6 +622,11 @@ export class TimelineRenderer {
       const cy = rowCenter(r);
       for (const item of lane.rowItems[r] ?? []) {
         const ext = addMarker(item.index, cy);
+        if (item.index === focusEvent) {
+          const end =
+            item.label === 'right' ? ext.x1 + LABEL_GAP + this.labelWidth(item.index) : ext.x1;
+          focusBox = { x0: Math.max(ext.x0, 0), x1: Math.min(end, w), cy, h: BAR_HEIGHT };
+        }
         if (item.label === 'none') continue;
         const type = data.events[item.index]?.t;
         const text = data.labels[item.index] ?? '';
@@ -548,11 +648,22 @@ export class TimelineRenderer {
     const listFirst = this.selection?.kind === 'list' ? this.selection.members[0] : undefined;
     for (const b of lane.bubbles) {
       if (b.single) {
-        addMarker(b.members[0] as number, bubbleCy);
+        const ext = addMarker(b.members[0] as number, bubbleCy);
+        if (b.members[0] === focusEvent) {
+          focusBox = {
+            x0: Math.max(ext.x0, 0),
+            x1: Math.min(ext.x1, w),
+            cy: bubbleCy,
+            h: BAR_HEIGHT,
+          };
+        }
         continue;
       }
       const x = (b.uCenter - left) * k;
       const width = bubbleWidth(b.members.length);
+      if (focusBubble !== undefined && b.members[0] === focusBubble) {
+        focusBox = { x0: x - width / 2, x1: x + width / 2, cy: bubbleCy, h: 18 };
+      }
       if (x + width < 0 || x - width > w) continue;
       bubbles.push({ x, width, count: b.members.length, selected: listFirst === b.members[0] });
     }
@@ -612,6 +723,26 @@ export class TimelineRenderer {
       ctx.lineWidth = 2;
       ctx.strokeStyle = theme.ink;
       ctx.stroke(ring);
+    }
+
+    // Foco del teclado: contorno doble (claro y oscuro) que se ve sobre cualquier fondo.
+    const box = focusBox as { x0: number; x1: number; cy: number; h: number } | null;
+    if (box) {
+      const pad = 5;
+      const path = new Path2D();
+      path.roundRect(
+        box.x0 - pad,
+        box.cy - box.h / 2 - pad,
+        box.x1 - box.x0 + 2 * pad,
+        box.h + 2 * pad,
+        8,
+      );
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = theme.surface;
+      ctx.stroke(path);
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = theme.focus;
+      ctx.stroke(path);
     }
   }
 

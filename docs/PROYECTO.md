@@ -441,6 +441,8 @@ Los 10 temas, transiciones, texturas, tipografías y selector de estilo.
 
 ### Fase 7 — Accesibilidad, móvil y rendimiento
 
+> Notas de la implementación (11/11/2026): la lista accesible del eje recorre con Tab hasta 200 eventos y burbujas visibles (los más cercanos al centro) y el que tiene el foco se rodea en el canvas con un rótulo de su descripción; enlace «Saltar a los eventos del eje»; foco atrapado en la ficha y el quiz, y al cerrarlos vuelve a donde estaba. En móvil, cabecera en tres filas, nombres de carril abreviados y asa para ampliar o cerrar la ficha. Rendimiento: los anchos de etiqueta se calculan sumando el de cada letra (medida una vez), el índice de búsqueda se construye a tandas y los datos se piden tras la primera pintura. Se adelanta de la Fase 8 el favicon (reloj de arena). Lighthouse móvil (simulado, servidor con gzip): Performance 93–94, Accessibility 100.
+
 - [ ] Toda la web es usable solo con teclado
 - [ ] Probado en un iPhone y un Android reales
 - [ ] Lighthouse móvil: Performance ≥ 90 y Accessibility ≥ 95

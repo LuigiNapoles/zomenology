@@ -941,3 +941,204 @@ input[type='text'] {
     grid-template-columns: 1fr;
   }
 }
+
+/* Accesibilidad y móvil (Fase 7) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 8px;
+  z-index: 50;
+  min-height: 44px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--surface);
+  font: inherit;
+  cursor: pointer;
+}
+
+.skip-link:focus {
+  top: 8px;
+}
+
+.focus-caption {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  right: 8px;
+  margin: 0;
+  padding: 6px 10px;
+  overflow: hidden;
+  border: 2px solid var(--accent-text);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.focus-hint {
+  color: var(--muted);
+}
+
+.lane-name {
+  border-left: 0 solid transparent;
+}
+
+.lane-short,
+.label-short,
+.sheet-handle {
+  display: none;
+}
+
+.filters-button:disabled,
+.search-input:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Objetivos táctiles de 44 px en pantallas táctiles. */
+@media (pointer: coarse) {
+  .jumps button,
+  .filters-reset,
+  .all-none button,
+  .check,
+  .expand {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 767px) {
+  /* Cabecera compacta en tres filas: título y juegos · buscador y filtros · escala, zoom y estilo. */
+  .header {
+    gap: 6px 8px;
+    padding: 6px 12px;
+  }
+
+  .controls {
+    display: contents;
+  }
+
+  .title {
+    flex: 1 1 auto;
+    order: 1;
+    font-size: 16px;
+  }
+
+  .learn-button {
+    order: 2;
+  }
+
+  .search {
+    flex: 1 1 60%;
+    order: 3;
+    max-width: none;
+  }
+
+  .filters-button:not(.learn-button) {
+    order: 4;
+  }
+
+  .controls > .group {
+    order: 5;
+  }
+
+  .style-picker {
+    flex: 1 1 auto;
+    order: 6;
+  }
+
+  .style-picker select {
+    width: 100%;
+  }
+
+  .status {
+    flex-basis: 100%;
+    order: 7;
+  }
+
+  .group button {
+    padding: 0 10px;
+  }
+
+  .label-full,
+  .style-label,
+  .status-center {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .label-short {
+    display: inline;
+  }
+
+  /* Carriles: nombres abreviados y la franja de color en el borde. */
+  .lane-names {
+    flex-basis: 80px;
+  }
+
+  .lane-name {
+    gap: 0;
+    padding: 0 4px 0 6px;
+    border-left-width: 4px;
+  }
+
+  .lane-name .swatch,
+  .lane-full {
+    display: none;
+  }
+
+  .lane-short {
+    display: block;
+  }
+
+  /* Ficha como hoja inferior: el asa se arrastra (abajo cierra, arriba amplía). */
+  .sheet-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    margin: -8px -20px -4px;
+    touch-action: none;
+    cursor: grab;
+  }
+
+  .sheet-grip {
+    width: 40px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--muted);
+  }
+
+  .panel.expanded {
+    max-height: 90vh;
+  }
+
+  .minimap {
+    padding: 4px 12px 6px;
+  }
+}
+
+@media (pointer: coarse) {
+  .minimap-bar {
+    height: 44px;
+  }
+}

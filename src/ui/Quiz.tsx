@@ -22,6 +22,7 @@ import { compileFilter } from '../state/filters';
 import type { Store } from '../state/store';
 import { PERIODS, type PeriodId } from '../themes/periods';
 import type { PreparedEvents } from '../timeline/prepare';
+import { trapTab } from './focus';
 
 interface Props {
   store: Store;
@@ -66,6 +67,7 @@ export function Quiz({ store, file, data, onClose }: Props) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLOListElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const stopDrag = useRef<(() => void) | null>(null);
 
   const filter = useMemo(
@@ -168,6 +170,7 @@ export function Quiz({ store, file, data, onClose }: Props) {
     // Las teclas no llegan al eje (flechas, + y −, «/») mientras el quiz está abierto.
     e.stopPropagation();
     if (e.key === 'Escape') onClose();
+    trapTab(e, dialogRef.current);
   };
 
   const eventOf = (i: number) => data.events[i] as TimelineEvent;
@@ -416,6 +419,7 @@ export function Quiz({ store, file, data, onClose }: Props) {
       }}
     >
       <div
+        ref={dialogRef}
         class="quiz"
         role="dialog"
         aria-modal="true"

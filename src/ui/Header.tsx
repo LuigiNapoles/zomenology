@@ -27,9 +27,9 @@ const STYLES: { value: StyleChoice; label: string }[] = [
   { value: 'neutral-dark', label: 'Neutro oscuro' },
 ];
 
-const MODES: { mode: ScaleMode; label: string }[] = [
-  { mode: 'linear', label: 'Lineal' },
-  { mode: 'log', label: 'Logarítmica' },
+const MODES: { mode: ScaleMode; label: string; short: string }[] = [
+  { mode: 'linear', label: 'Lineal', short: 'Lineal' },
+  { mode: 'log', label: 'Logarítmica', short: 'Log.' },
 ];
 
 export function Header({ store, children }: Props) {
@@ -43,14 +43,18 @@ export function Header({ store, children }: Props) {
       <h1 class="title">Cronología interactiva</h1>
       <div class="controls">
         <div class="group" role="group" aria-label="Escala">
-          {MODES.map(({ mode, label }) => (
+          {MODES.map(({ mode, label, short }) => (
             <button
               key={mode}
               type="button"
               aria-pressed={view.mode === mode}
               onClick={() => store.setMode(mode)}
             >
-              {label}
+              {/* En móvil se ve la forma corta; el lector de pantalla lee siempre la larga. */}
+              <span class="label-full">{label}</span>
+              <span class="label-short" aria-hidden="true">
+                {short}
+              </span>
             </button>
           ))}
         </div>
@@ -72,7 +76,7 @@ export function Header({ store, children }: Props) {
         </div>
         {children}
         <label class="style-picker">
-          <span>Estilo</span>
+          <span class="style-label">Estilo</span>
           <select
             value={style}
             onChange={(e) => store.setStyle(e.currentTarget.value as StyleChoice)}
@@ -85,8 +89,10 @@ export function Header({ store, children }: Props) {
           </select>
         </label>
         <p class="status">
-          Centro: <strong>{formatInstant(center, years)}</strong> · {period.name} · En pantalla:{' '}
-          {formatSpan(years)}
+          <span class="status-center">
+            Centro: <strong>{formatInstant(center, years)}</strong> ·{' '}
+          </span>
+          {period.name} · En pantalla: {formatSpan(years)}
         </p>
       </div>
     </header>

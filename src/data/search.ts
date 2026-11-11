@@ -6,6 +6,20 @@ export function normalizeTerm(term: string): string {
   return term.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 }
 
+/** Las mismas palabras se repiten mucho: se normaliza cada una una sola vez. */
+const normalized = new Map<string, string>();
+function normalizeCached(term: string): string {
+  let t = normalized.get(term);
+  if (t === undefined) {
+    t = normalizeTerm(term);
+    normalized.set(term, t);
+  }
+  return t;
+}
+
+/** Documentos por tanda al construir el índice poco a poco (cada tanda es una tarea corta). */
+export const INDEX_CHUNK = 400;
+
 interface SearchDoc {
   id: number;
   d: string;
@@ -53,17 +67,23 @@ export function termSimilarity(query: string, term: string): number {
 export class SearchIndex {
   private mini: MiniSearch<SearchDoc>;
   private where = new Map<number, { dated: boolean; index: number }>();
+  private pending: SearchDoc[] = [];
 
+  /**
+   * Índice completo al momento (tests). En la web se usa `SearchIndex.build`, que lo construye
+   * a tandas para no bloquear la página.
+   */
   constructor(
     dated: readonly TimelineEvent[],
     undated: readonly TimelineEvent[],
     sections: readonly Section[],
+    deferred = false,
   ) {
     this.mini = new MiniSearch<SearchDoc>({
       fields: ['d', 'o', 'sec'],
       idField: 'id',
       processTerm: (term) => {
-        const t = normalizeTerm(term);
+        const t = normalizeCached(term);
         return t.length > 0 ? t : null;
       },
       searchOptions: {
@@ -83,7 +103,20 @@ export class SearchIndex {
     };
     add(dated, true);
     add(undated, false);
-    this.mini.addAll(docs);
+    if (deferred) this.pending = docs;
+    else this.mini.addAll(docs);
+  }
+
+  /** Construye el índice a tandas de INDEX_CHUNK documentos, cediendo el turno entre tandas. */
+  static async build(
+    dated: readonly TimelineEvent[],
+    undated: readonly TimelineEvent[],
+    sections: readonly Section[],
+  ): Promise<SearchIndex> {
+    const index = new SearchIndex(dated, undated, sections, true);
+    await index.mini.addAllAsync(index.pending, { chunkSize: INDEX_CHUNK });
+    index.pending = [];
+    return index;
   }
 
   search(query: string, limit = MAX_RESULTS): SearchHit[] {

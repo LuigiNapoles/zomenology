@@ -17,6 +17,7 @@ interface Props {
   store: Store;
 }
 
+/** Alto por defecto; en pantallas táctiles el CSS lo sube a 44 px. */
 const HEIGHT = 30;
 const FONT = '600 14px "Source Sans 3", system-ui, sans-serif';
 
@@ -24,6 +25,8 @@ const FONT = '600 14px "Source Sans 3", system-ui, sans-serif';
 export function Minimap({ store }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [label, setLabel] = useState('');
+  /** Posición del centro en la barra, de 0 a 100 (para el lector de pantalla). */
+  const [percent, setPercent] = useState(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -36,9 +39,10 @@ export function Minimap({ store }: Props) {
       frame = 0;
       const dpr = window.devicePixelRatio || 1;
       width = canvas.clientWidth;
-      if (canvas.width !== Math.round(width * dpr)) {
+      const height = canvas.clientHeight || HEIGHT;
+      if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
         canvas.width = Math.round(width * dpr);
-        canvas.height = Math.round(HEIGHT * dpr);
+        canvas.height = Math.round(height * dpr);
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const style = getComputedStyle(document.documentElement);
@@ -46,7 +50,7 @@ export function Minimap({ store }: Props) {
         toCss(parseColor(style.getPropertyValue(name)) ?? parseColor(fallback) ?? [0, 0, 0]);
       const ink = css('--ink', '#111418');
       ctx.fillStyle = css('--surface', '#ffffff');
-      ctx.fillRect(0, 0, width, HEIGHT);
+      ctx.fillRect(0, 0, width, height);
 
       // Eras coloreadas con su color de periodo.
       ctx.font = FONT;
@@ -57,15 +61,15 @@ export function Minimap({ store }: Props) {
         const x1 = next ? minimapX(next.from, width) : width;
         ctx.globalAlpha = 0.3;
         ctx.fillStyle = era.band;
-        ctx.fillRect(x0, 0, x1 - x0, HEIGHT);
+        ctx.fillRect(x0, 0, x1 - x0, height);
         ctx.globalAlpha = 1;
         ctx.fillStyle = era.band;
-        ctx.fillRect(x0, HEIGHT - 4, x1 - x0, 4);
+        ctx.fillRect(x0, height - 4, x1 - x0, 4);
         const text = era.name;
         const tw = ctx.measureText(text).width;
         if (tw + 12 < x1 - x0) {
           ctx.fillStyle = ink;
-          ctx.fillText(text, x0 + 6, HEIGHT / 2 - 1);
+          ctx.fillText(text, x0 + 6, height / 2 - 1);
         }
       });
 
@@ -73,11 +77,11 @@ export function Minimap({ store }: Props) {
       const { x0, x1 } = windowRect(store.view, store.width, width);
       ctx.fillStyle = ink;
       ctx.globalAlpha = 0.14;
-      ctx.fillRect(x0, 1, x1 - x0, HEIGHT - 2);
+      ctx.fillRect(x0, 1, x1 - x0, height - 2);
       ctx.globalAlpha = 1;
       ctx.lineWidth = 2;
       ctx.strokeStyle = ink;
-      ctx.strokeRect(x0, 1, x1 - x0, HEIGHT - 2);
+      ctx.strokeRect(x0, 1, x1 - x0, height - 2);
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(draw);
@@ -93,6 +97,7 @@ export function Minimap({ store }: Props) {
         themeTimer = window.setTimeout(schedule, 650);
       }
       setLabel(formatInstant(centerTime(store.view), visibleYears(store.view)));
+      setPercent(Math.round(minimapX(centerTime(store.view), 100)));
     };
     update();
 
@@ -165,7 +170,9 @@ export function Minimap({ store }: Props) {
         tabIndex={0}
         aria-label="Posición en toda la historia"
         aria-valuetext={label}
-        aria-valuenow={0}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
       />
       <div class="jumps" role="group" aria-label="Saltos rápidos">
         {JUMPS.map((jump) => (

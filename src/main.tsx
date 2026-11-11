@@ -14,11 +14,12 @@ import {
 } from './state/filters';
 import { eventHash, loadSaved, parseEventHash, save } from './state/persist';
 import { Store } from './state/store';
-import { applyTheme, installThemes } from './themes/themeController';
+import { afterNextPaint, applyTheme, installThemes } from './themes/themeController';
 import { viewForEvent } from './timeline/focus';
 import { attachKeyboard } from './timeline/interaction';
 import { prepareEvents, type PreparedEvents } from './timeline/prepare';
-import type { TimelineRenderer } from './timeline/renderer';
+import { labelCharWidths, type TimelineRenderer } from './timeline/renderer';
+import { warmUp } from './timeline/textWidth';
 import { fullView, viewAround, type ScaleMode, type View } from './timeline/scale';
 import { EventPanel, focusEvent } from './ui/EventPanel';
 import { FiltersPanel } from './ui/FiltersPanel';
@@ -27,6 +28,7 @@ import { LearnButtons } from './ui/LearnButtons';
 import { Minimap } from './ui/Minimap';
 import { SearchBox } from './ui/SearchBox';
 import { TimelineView } from './ui/TimelineView';
+import { focusTimeline } from './ui/focus';
 import './themes/fonts.css';
 import './ui/app.css';
 import './themes/themes.css';
@@ -58,10 +60,12 @@ installThemes();
 applyTheme(store.theme);
 store.subscribe(() => applyTheme(store.theme));
 
-/** El eje dibuja con «Source Sans 3»: al cargar las tipografías hay que volver a medir. */
+/**
+ * El eje dibuja con «Source Sans 3»: cuando carga hay que volver a medir las etiquetas.
+ * Las demás tipografías (las de cada era) no afectan al eje.
+ */
 let currentRenderer: TimelineRenderer | null = null;
 if ('fonts' in document) {
-  document.fonts.addEventListener('loadingdone', () => currentRenderer?.fontsChanged());
   void document.fonts.load('14px "Source Sans 3"').then(() => currentRenderer?.fontsChanged());
 }
 
@@ -126,27 +130,46 @@ function App() {
   const filters = useFilters();
 
   useEffect(() => {
-    Promise.all([loadData('events.json'), loadData('undated.json')])
-      .then(([file, undated]) => {
-        const byId = new Map<number, { dated: boolean; index: number }>();
-        file.events.forEach((e, i) => byId.set(e.id, { dated: true, index: i }));
-        undated.events.forEach((e, i) => byId.set(e.id, { dated: false, index: i }));
-        const ds: Dataset = { file, undated, events: prepareEvents(file), byId };
-        setDataset(ds);
-        if (!openFromHash(ds, false) && import.meta.env.DEV) {
-          const place = ds.byId.get(Number(new URLSearchParams(location.search).get('sel')));
-          if (place?.dated) store.select({ kind: 'event', index: place.index });
-        }
-      })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
+    // Los datos (unos 360 KB) se piden tras la primera pintura, para que la cabecera salga ya.
+    const load = () =>
+      Promise.all([loadData('events.json'), loadData('undated.json')]).then(
+        async ([file, undated]) => {
+          const byId = new Map<number, { dated: boolean; index: number }>();
+          file.events.forEach((e, i) => byId.set(e.id, { dated: true, index: i }));
+          undated.events.forEach((e, i) => byId.set(e.id, { dated: false, index: i }));
+          const events = prepareEvents(file);
+          // Las letras de las etiquetas se miden a tandas antes de pintar el eje (ver warmUp),
+          // con la tipografía del eje ya cargada.
+          if ('fonts' in document) {
+            await document.fonts.load('14px "Source Sans 3"').catch(() => undefined);
+          }
+          await warmUp(labelCharWidths(), events.labels);
+          const ds: Dataset = { file, undated, events, byId };
+          setDataset(ds);
+          if (!openFromHash(ds, false) && import.meta.env.DEV) {
+            const place = ds.byId.get(Number(new URLSearchParams(location.search).get('sel')));
+            if (place?.dated) store.select({ kind: 'event', index: place.index });
+          }
+        },
+      );
+    afterNextPaint(() => {
+      load().catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
+    });
     return attachKeyboard(window, store);
   }, []);
 
   useEffect(() => {
     if (!dataset) return;
     // El índice de búsqueda se construye cuando el navegador queda libre, tras la primera pintura.
+    let cancelled = false;
     const build = () =>
-      setIndex(new SearchIndex(dataset.file.events, dataset.undated.events, dataset.file.sections));
+      void SearchIndex.build(
+        dataset.file.events,
+        dataset.undated.events,
+        dataset.file.sections,
+      ).then((built) => {
+        if (!cancelled) setIndex(built);
+      });
     const idle =
       typeof requestIdleCallback === 'function'
         ? requestIdleCallback(build, { timeout: 2000 })
@@ -171,6 +194,7 @@ function App() {
     window.addEventListener('pagehide', persist);
     syncHash(dataset);
     return () => {
+      cancelled = true;
       if (typeof cancelIdleCallback === 'function') cancelIdleCallback(idle);
       window.clearTimeout(idle);
       window.clearTimeout(saveTimer);
@@ -203,7 +227,31 @@ function App() {
 
   return (
     <div class="app">
+      <button type="button" class="skip-link" onClick={focusTimeline}>
+        Saltar a los eventos del eje
+      </button>
       <Header store={store}>
+        {!dataset && (
+          // Mismo hueco que tendrán el buscador y los botones: la cabecera no cambia de tamaño al cargar.
+          <>
+            <div class="search">
+              <input class="search-input" type="search" placeholder="Cargando eventos…" disabled />
+            </div>
+            <button type="button" class="filters-button" disabled>
+              Filtros
+            </button>
+            {LEARN && (
+              <>
+                <button type="button" class="filters-button learn-button" disabled>
+                  Sorpréndeme
+                </button>
+                <button type="button" class="filters-button learn-button" disabled>
+                  Quiz
+                </button>
+              </>
+            )}
+          </>
+        )}
         {dataset && (
           <>
             <SearchBox
@@ -225,34 +273,36 @@ function App() {
           </>
         )}
       </Header>
-      {error && <p class="message">Error: {error}</p>}
-      {!error && !dataset && <p class="message">Cargando eventos…</p>}
-      {dataset && (
-        <div class="main">
-          {filtersOpen && (
-            <FiltersPanel
+      <main class="main">
+        {error && <p class="message">Error: {error}</p>}
+        {!error && !dataset && <p class="message">Cargando eventos…</p>}
+        {dataset && (
+          <>
+            {filtersOpen && (
+              <FiltersPanel
+                store={store}
+                file={dataset.file}
+                visible={visible}
+                total={dataset.events.count}
+                onClose={() => setFiltersOpen(false)}
+              />
+            )}
+            <TimelineView
+              store={store}
+              events={dataset.events}
+              macros={dataset.file.macros}
+              onRenderer={onRenderer}
+            />
+            <EventPanel
               store={store}
               file={dataset.file}
-              visible={visible}
-              total={dataset.events.count}
-              onClose={() => setFiltersOpen(false)}
+              undated={dataset.undated}
+              data={dataset.events}
             />
-          )}
-          <TimelineView
-            store={store}
-            events={dataset.events}
-            macros={dataset.file.macros}
-            onRenderer={onRenderer}
-          />
-          <EventPanel
-            store={store}
-            file={dataset.file}
-            undated={dataset.undated}
-            data={dataset.events}
-          />
-        </div>
-      )}
-      {dataset && <Minimap store={store} />}
+          </>
+        )}
+      </main>
+      <Minimap store={store} />
     </div>
   );
 }

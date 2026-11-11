@@ -47,8 +47,8 @@ export function SearchBox({ store, index, file, undated, data }: Props) {
   const choose = (hit: SearchHit) => {
     if (hit.dated) focusEvent(store, data, hit.index);
     else store.select({ kind: 'undated', index: hit.index });
+    // Sin blur: la ficha se lleva el foco a su título y, al cerrarla, vuelve al buscador.
     setOpen(false);
-    inputRef.current?.blur();
   };
 
   const onKeyDown = (e: KeyboardEvent) => {

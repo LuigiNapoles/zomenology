@@ -28,6 +28,15 @@ function loadFont(family: string): void {
 
 let loadedAll = false;
 
+/** Ejecuta `fn` justo después del siguiente pintado (no compite con la primera pintura). */
+export function afterNextPaint(fn: () => void): void {
+  if (typeof requestAnimationFrame !== 'function') {
+    setTimeout(fn, 0);
+    return;
+  }
+  requestAnimationFrame(() => setTimeout(fn, 0));
+}
+
 /**
  * Activa un estilo: cambia data-period (las variables se interpolan en 600 ms por CSS)
  * y carga sus tipografías y las de los dos periodos vecinos. El resto, cuando el navegador
@@ -38,14 +47,16 @@ export function applyTheme(id: ThemeId): void {
   if (root.dataset.period === id) return;
   root.dataset.period = id;
   const index = PERIODS.findIndex((p) => p.id === id);
-  const near = [id];
+  // La del estilo activo, ya; las de los vecinos, tras pintar (no retrasan la primera pintura).
+  for (const f of fontsOf(id)) loadFont(f);
+  const near: ThemeId[] = [];
   if (index >= 0) {
     const prev = PERIODS[index - 1];
     const next = PERIODS[index + 1];
     if (prev) near.push(prev.id);
     if (next) near.push(next.id);
   }
-  for (const t of near) for (const f of fontsOf(t)) loadFont(f);
+  afterNextPaint(() => near.forEach((t) => fontsOf(t).forEach(loadFont)));
   if (!loadedAll) {
     loadedAll = true;
     const rest = () => ALL_THEMES.forEach((t) => fontsOf(t.id).forEach(loadFont));

@@ -64,6 +64,23 @@ function rowsOf(lane: LaneLayout) {
 }
 
 describe('placeLane', () => {
+  it('sin filas (eje muy bajo) no falla: todo va a las burbujas', () => {
+    const wide = { index: 0, lane: 0, x0: -500, x1: 3000, center: 1250, bar: true, labelWidth: 50 };
+    const dot = { index: 1, lane: 0, x0: 100, x1: 108, center: 104, bar: false, labelWidth: 50 };
+    const { placed, overflow } = placeLane([wide, dot], 0, -1000, 2000, 1000);
+    expect(placed).toEqual([]);
+    expect(overflow).toHaveLength(2);
+  });
+
+  it('un eje muy bajo (ventana pequeña con la ficha abierta) no rompe la colocación', () => {
+    for (const height of [0, 20, 60, 120]) {
+      for (const mode of ['log', 'linear'] as const) {
+        expect(() => layoutFor(fullView(mode), 500, height)).not.toThrow();
+        expect(() => layoutFor(viewAround(1250, 300, mode), 500, height)).not.toThrow();
+      }
+    }
+  });
+
   it('no solapa y manda a burbuja lo que no cabe', () => {
     const items = Array.from({ length: 10 }, (_, i) => ({
       index: i,

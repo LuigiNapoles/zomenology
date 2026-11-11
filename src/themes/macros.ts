@@ -17,6 +17,22 @@ export const MACRO_COLORS: readonly string[] = [
   '#777777', // 11 Temas — gris
 ];
 
+/** Nombres cortos de las macrocategorías para la columna de carriles en móvil (< 768 px). */
+export const MACRO_SHORT: readonly string[] = [
+  'Profundo',
+  'Paleolít.',
+  'Neolítico',
+  'P. Oriente',
+  'Antigüed.',
+  'Clásico',
+  'Medieval',
+  'Moderna',
+  'Contemp.',
+  'Extraeur.',
+  'Geografía',
+  'Temas',
+];
+
 function parseHex(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];

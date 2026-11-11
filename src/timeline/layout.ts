@@ -112,7 +112,8 @@ export function placeLane(
   winRight: number,
   wideFrom = Infinity,
 ): LanePlacement {
-  const wideRows = Math.max(1, Math.floor(rows / 2));
+  // Con un eje muy bajo puede no haber ninguna fila: entonces todo va a las burbujas.
+  const wideRows = Math.min(rows, Math.max(1, Math.floor(rows / 2)));
   const rowList = Array.from({ length: rows }, () => new Row());
   const placed: PlacedItem[] = [];
   const overflow: LayoutItemInput[] = [];
