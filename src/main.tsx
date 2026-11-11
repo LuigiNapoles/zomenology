@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { loadData } from './data/load';
 import { SearchIndex } from './data/search';
 import type { DataFile } from './data/types';
+import { LEARN } from './features/flags';
 import { formatNumber } from './format/dates';
 import {
   DEFAULT_FILTERS,
@@ -22,6 +23,7 @@ import { fullView, viewAround, type ScaleMode, type View } from './timeline/scal
 import { EventPanel, focusEvent } from './ui/EventPanel';
 import { FiltersPanel } from './ui/FiltersPanel';
 import { Header } from './ui/Header';
+import { LearnButtons } from './ui/LearnButtons';
 import { Minimap } from './ui/Minimap';
 import { SearchBox } from './ui/SearchBox';
 import { TimelineView } from './ui/TimelineView';
@@ -219,6 +221,7 @@ function App() {
             >
               Filtros{active ? ` · ${formatNumber(visible, 0)}` : ''}
             </button>
+            {LEARN && <LearnButtons store={store} file={dataset.file} data={dataset.events} />}
           </>
         )}
       </Header>

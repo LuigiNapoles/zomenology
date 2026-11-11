@@ -432,6 +432,10 @@ Los 10 temas, transiciones, texturas, tipografías y selector de estilo.
 
 «¿Qué pasaba a la vez?», «Sorpréndeme», quiz y escala humana.
 
+> **Decisión del 11/11/2026: dos versiones de la web.** Del mismo código salen dos compilaciones: la **completa** (con «Aprender jugando») y la **sencilla** (sin esta fase: ni contemporáneos, ni «Sorpréndeme», ni quiz, ni escala humana). La sencilla se elige al compilar con `VITE_APRENDER=no` (archivo `.env.sencilla`): `npm run dev:sencilla` y `npm run build:sencilla` (sale en `dist-sencilla/`). En la Fase 8 se publicarán las dos, por ejemplo en `…/cronologia/` y `…/cronologia/sencilla/`.
+>
+> Detalles de la implementación: los contemporáneos se ordenan por la diferencia media entre inicios y finales (así un periodo enorme no sale como «el más cercano») y respetan los filtros activos; «¿Qué siglo?» solo usa eventos desde el 10.000 a.C. que caben enteros en un siglo (desde el 1000 a.C.) o milenio (antes); «Ordena» usa 4 eventos de años distintos y cuenta la fecha de comienzo; la escala humana usa el calendario cósmico antes del 3300 a.C. y las generaciones desde entonces; la mejor puntuación se guarda por modo.
+
 - [ ] Los contemporáneos de un evento del siglo XIII incluyen eventos de al menos 3 macrocategorías distintas
 - [ ] El quiz no repite eventos en una misma ronda y guarda la mejor puntuación
 

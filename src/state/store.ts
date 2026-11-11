@@ -7,6 +7,7 @@ import {
   lerpView,
   panBy,
   switchMode,
+  travelView,
   zoomAt,
   type ScaleMode,
   type View,
@@ -14,6 +15,8 @@ import {
 
 /** Duración de las animaciones de botones y saltos. */
 export const ANIMATION_MS = 250;
+/** Duración del viaje de «Sorpréndeme». */
+export const TRAVEL_MS = 1600;
 
 type Listener = () => void;
 
@@ -96,6 +99,15 @@ export class Store {
 
   /** Cambia la vista con animación ease-out (botones, teclado y saltos). */
   animateTo(target: View, ms = ANIMATION_MS): void {
+    this.animate(target, ms, (from, to, k) => lerpView(from, to, easeOutCubic(k)));
+  }
+
+  /** Viaje por el eje: se aleja, se desplaza y se acerca (Sorpréndeme). */
+  travelTo(target: View, ms = TRAVEL_MS): void {
+    this.animate(target, ms, travelView);
+  }
+
+  private animate(target: View, ms: number, path: (from: View, to: View, k: number) => View) {
     this.cancelAnimation();
     const to = clampView(target);
     if (ms <= 0 || prefersReducedMotion() || typeof requestAnimationFrame !== 'function') {
@@ -103,11 +115,11 @@ export class Store {
       this.emit();
       return;
     }
-    const from = this.view;
+    const from = this.view.mode === to.mode ? this.view : switchMode(this.view, to.mode);
     const start = performance.now();
     const step = (now: number) => {
       const k = Math.min(1, (now - start) / ms);
-      this.view = k >= 1 ? to : clampView(lerpView(from, to, easeOutCubic(k)));
+      this.view = k >= 1 ? to : clampView(path(from, to, k));
       this.emit();
       this.animation = k < 1 ? requestAnimationFrame(step) : 0;
     };

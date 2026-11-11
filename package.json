@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:sencilla": "vite --mode sencilla",
     "build": "tsc --noEmit && vite build",
+    "build:sencilla": "tsc --noEmit && vite build --mode sencilla --outDir dist-sencilla",
     "preview": "vite preview",
     "test": "vitest run",
     "lint": "eslint .",

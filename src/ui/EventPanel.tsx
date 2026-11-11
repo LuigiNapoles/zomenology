@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { DataFile, TimelineEvent } from '../data/types';
 import { DATE_TYPE_NAMES, formatDuration, formatOriginalDate } from '../format/dates';
+import { LEARN } from '../features/flags';
+import { humanScaleText } from '../features/humanScale';
 import { compileFilter } from '../state/filters';
 import { eventHash } from '../state/persist';
 import type { Store } from '../state/store';
 import { macroColor } from '../themes/macros';
 import { viewForEvent } from '../timeline/focus';
 import type { PreparedEvents } from '../timeline/prepare';
+import { Contemporaries } from './Contemporaries';
 
 interface Props {
   store: Store;
@@ -62,9 +65,12 @@ export function EventPanel({ store, file, undated, data }: Props) {
   const filter = useMemo(() => compileFilter(filters, data), [filters, data]);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [copied, setCopied] = useState(false);
+  /** «¿Qué pasaba a la vez?» sigue abierto al saltar de un evento a otro, hasta cerrar la ficha. */
+  const [showWith, setShowWith] = useState(false);
 
   useEffect(() => {
     setCopied(false);
+    if (!selection) setShowWith(false);
     titleRef.current?.focus();
   }, [selection]);
 
@@ -207,6 +213,13 @@ export function EventPanel({ store, file, undated, data }: Props) {
         <dd>{e.p}</dd>
       </dl>
 
+      {LEARN && isDated && e.a !== undefined && (
+        <p class="human-scale">
+          <span class="human-scale-label">Escala humana</span>
+          {humanScaleText(e.a, data.start[index] as number, data.point[index] === 1)}
+        </p>
+      )}
+
       <div class="panel-actions">
         <button type="button" onClick={() => void copy()}>
           {copied ? 'Enlace copiado' : 'Copiar enlace'}
@@ -216,12 +229,24 @@ export function EventPanel({ store, file, undated, data }: Props) {
             <button type="button" onClick={() => focusEvent(store, data, index)}>
               Centrar en el eje
             </button>
-            <button type="button" disabled title="Disponible en una próxima versión">
-              ¿Qué pasaba a la vez?
-            </button>
+            {LEARN && (
+              <button type="button" aria-expanded={showWith} onClick={() => setShowWith(!showWith)}>
+                ¿Qué pasaba a la vez?
+              </button>
+            )}
           </>
         )}
       </div>
+
+      {LEARN && isDated && showWith && (
+        <Contemporaries
+          file={file}
+          data={data}
+          index={index}
+          filter={filter}
+          onOpen={(i) => focusEvent(store, data, i)}
+        />
+      )}
     </div>
   );
 }

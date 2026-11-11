@@ -21,3 +21,4 @@ La especificación completa está en docs/PROYECTO.md. Léela entera antes de em
 - npm run dev → servidor local
 - npm test → tests
 - npm run build → build de producción
+- npm run dev:sencilla / npm run build:sencilla → versión sencilla, sin «Aprender jugando» (sale en dist-sencilla/)

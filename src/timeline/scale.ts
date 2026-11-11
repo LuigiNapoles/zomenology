@@ -147,3 +147,22 @@ export function lerpView(from: View, to: View, k: number): View {
     span: from.span * Math.pow(to.span / from.span, k),
   };
 }
+
+/**
+ * Animación de «viaje» (Sorpréndeme): se aleja hasta ver origen y destino a la vez, se desplaza
+ * y vuelve a acercarse. `k` va de 0 a 1 sin suavizar; la curva ya lleva su propio suavizado.
+ */
+export function travelView(from: View, to: View, k: number): View {
+  const s0 = Math.log(from.span);
+  const s1 = Math.log(to.span);
+  const distance = Math.abs(to.center - from.center);
+  // A mitad de camino, la amplitud basta para ver los dos extremos con margen.
+  const peak = Math.log(Math.max(distance * 1.2, from.span, to.span));
+  const hump = Math.max(0, peak - (s0 + s1) / 2);
+  const smooth = k * k * (3 - 2 * k);
+  return {
+    mode: to.mode,
+    center: from.center + (to.center - from.center) * smooth,
+    span: Math.exp(s0 + (s1 - s0) * smooth + hump * 4 * smooth * (1 - smooth)),
+  };
+}
