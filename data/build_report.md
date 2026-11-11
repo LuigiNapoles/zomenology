@@ -24,6 +24,8 @@ Cuadra: **sí** (10.030 + 114 + 728 = 10.872).
 | Revisión menor («escala supuesta»): marcada como aproximada | 6 | 6907, 7706, 7825, 10319, 10483, 10861 |
 | Revisión menor («formato complejo»): marcada como aproximada | 3 | 4783, 4982, 5131 |
 | Revisión menor («fecha con alternativas»): marcada como aproximada | 2 | 8256, 8870 |
+| Día leído como año («30/03-22/05/1282»): `inicio` = 1282, 30 de marzo | 1 | 2869 |
+| Día leído como mes («10-11/06/1329»): inicio el 10 de junio | 1 | 6121 |
 | Inicio posterior al fin: se intercambian `inicio` y `fin` | 1 | 10744 |
 
 Eventos del eje marcados como aproximados (`ap`=1): 1.657.
@@ -112,7 +114,7 @@ Etiquetas de sección corregidas: «Contempt» → «Contemporánea», «Moerna�
 
 ## Forma de los datos del eje
 
-- Puntos (`inicio` = `fin`): 2.116 · Barras: 7.914
+- Puntos (`inicio` = `fin`): 2.117 · Barras: 7.913
 - Rango: -13.800.000.000 a 2.026
 
 ## Tamaño de los archivos

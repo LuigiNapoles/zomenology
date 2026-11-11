@@ -70,6 +70,21 @@ LABEL_FIXES = [("Contempt ", "Contemporánea "), ("Moerna ", "Moderna ")]
 
 TIPO_CODES = {"evento": "e", "vida": "v", "muerte": "m", "floruit": "f", "nacimiento": "n"}
 
+# Correcciones puntuales aprobadas: fechas mal leídas del PDF que se deducen de `fecha_texto`.
+# id → (valores esperados en el CSV, valores corregidos, motivo).
+MANUAL_FIXES: dict[int, tuple[dict[str, str], dict[str, str], str]] = {
+    2869: (
+        {"fecha_texto": "30/03-22/05/1282", "inicio": "30", "mes_inicio": "", "dia_inicio": ""},
+        {"inicio": "1282", "mes_inicio": "3", "dia_inicio": "30"},
+        "Día leído como año («30/03-22/05/1282»): `inicio` = 1282, 30 de marzo",
+    ),
+    6121: (
+        {"fecha_texto": "10-11/06/1329", "mes_inicio": "10", "dia_inicio": ""},
+        {"mes_inicio": "6", "dia_inicio": "10"},
+        "Día leído como mes («10-11/06/1329»): inicio el 10 de junio",
+    ),
+}
+
 MINOR_REVIEW = {"era supuesta", "escala supuesta", "formato complejo", "fecha con alternativas"}
 UNDATED_REVIEW = "sin fecha al final"
 INVERTED_REVIEW = "inicio posterior al fin"
@@ -108,6 +123,17 @@ def build() -> None:
     df = pd.read_csv(CSV_PATH, encoding="utf-8-sig", dtype=str, keep_default_na=False)
     rows_read = len(df)
 
+    for fix_id, (expected, fixed, _) in MANUAL_FIXES.items():
+        mask = df["id"] == str(fix_id)
+        if mask.sum() != 1:
+            raise BuildError(f"Corrección manual: no existe el id {fix_id}")
+        for col, value in expected.items():
+            current = df.loc[mask, col].iloc[0]
+            if current != value:
+                raise BuildError(f"Corrección manual id {fix_id}: {col} vale {current!r}, se esperaba {value!r}")
+        for col, value in fixed.items():
+            df.loc[mask, col] = value
+
     # Secciones en orden de primera aparición en el CSV.
     section_names = list(dict.fromkeys(df["seccion"]))
     sections = [{"name": s, "label": label_for(s), "macro": macro_for(s)} for s in section_names]
@@ -128,6 +154,9 @@ def build() -> None:
         if row.duplicado_de != "":
             excluded["Duplicado (`duplicado_de` relleno)"] += 1
             continue
+
+        if row_id in MANUAL_FIXES:
+            note(MANUAL_FIXES[row_id][2], row_id)
 
         ev: dict[str, object] = {
             "id": row_id,
@@ -240,6 +269,11 @@ def validate(events: list[dict[str, object]], undated: list[dict[str, object]],
         assert isinstance(a, int) and isinstance(b, int)
         if a > b:
             raise BuildError(f"id {e['id']}: inicio {a} > fin {b}")
+        # Con mes y día: el comienzo no puede ser posterior al final.
+        start = (a, e.get("ma", 0), e.get("da", 0))
+        end = (b, e.get("mb", 13), e.get("db", 32))
+        if start > end:
+            raise BuildError(f"id {e['id']}: comienzo {start} posterior al final {end}")
         if max(1, PRESENT_REF - a) < 1:
             raise BuildError(f"id {e['id']}: «ya» no válido")
     for s in sections:

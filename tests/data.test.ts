@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { DataFile } from '../src/data/types';
+import { eventSpan } from '../src/timeline/time';
 
 const dir = resolve(__dirname, '../public/data');
 
@@ -51,6 +52,13 @@ describe('datos generados', () => {
         expect(value === '' || value === null).toBe(false);
       }
       expect(e.d.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('ningún evento termina antes de empezar (con mes y día)', () => {
+    for (const e of events.events) {
+      const { start, end } = eventSpan(e);
+      expect(end, `id ${e.id}`).toBeGreaterThan(start);
     }
   });
 
